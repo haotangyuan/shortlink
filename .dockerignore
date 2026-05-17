@@ -1,0 +1,44 @@
+# Git 相关
+.git
+.gitignore
+
+# IDE 相关
+.idea/
+.vscode/
+*.iml
+
+# Maven 构建相关 (保留 target，因为需要构建)
+.mvn/
+mvnw
+mvnw.cmd
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 文档文件
+*.md
+docs/
+
+# Docker 相关
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 测试相关
+src/test/
+
+# 开发环境配置
+.serena/
+.claude/
+start.sh
+next-prompt.md
+MCP_USAGE.md
