@@ -1,4 +1,4 @@
-package dev.haotangyuan.shortlink.dto.resp;
+package dev.haotangyuan.shortlink.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,7 +15,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LinkBatchCreateRespDTO {
+public class LinkBatchCreateVO {
 
     /**
      * 成功数量
@@ -25,5 +25,5 @@ public class LinkBatchCreateRespDTO {
     /**
      * 批量创建返回参数
      */
-    private List<LinkBaseInfoRespDTO> baseLinkInfos;
+    private List<LinkBaseInfoVO> baseLinkInfos;
 }

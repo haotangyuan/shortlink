@@ -1,24 +1,22 @@
 package dev.haotangyuan.shortlink.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
-import dev.haotangyuan.shortlink.dao.entity.UserDO;
 import dev.haotangyuan.shortlink.dto.req.UserLoginReqDTO;
 import dev.haotangyuan.shortlink.dto.req.UserRegisterReqDTO;
 import dev.haotangyuan.shortlink.dto.req.UserUpdateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.UserLoginRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.UserRespDTO;
+import dev.haotangyuan.shortlink.vo.UserLoginVO;
+import dev.haotangyuan.shortlink.vo.UserVO;
 
 /**
  * 用户接口层
  * @author: haotangyuan
  */
-public interface UserService extends IService<UserDO> {
+public interface UserService {
     /**
      * 根据用户名查询用户信息
      * @param username 用户名
-     * @return UserRespDTO 用户返回实体
+     * @return UserVO 用户返回实体
      */
-    UserRespDTO getByUsername(String username);
+    UserVO getByUsername(String username);
 
     /**
      * 查看用户名是否存在
@@ -44,9 +42,9 @@ public interface UserService extends IService<UserDO> {
     /**
      * 用户登录
      * @param userLoginReqDTO
-     * @return UserLoginRespDTO
+     * @return UserLoginVO
      */
-    UserLoginRespDTO login(UserLoginReqDTO userLoginReqDTO);
+    UserLoginVO login(UserLoginReqDTO userLoginReqDTO);
 
     /**
      * 检查用户是否登录

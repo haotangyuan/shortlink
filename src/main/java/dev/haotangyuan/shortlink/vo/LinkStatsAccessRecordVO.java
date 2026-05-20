@@ -1,4 +1,4 @@
-package dev.haotangyuan.shortlink.dto.resp;
+package dev.haotangyuan.shortlink.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
@@ -16,7 +16,7 @@ import java.util.Date;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LinkStatsAccessRecordRespDTO {
+public class LinkStatsAccessRecordVO {
 
     /**
      * 访客类型

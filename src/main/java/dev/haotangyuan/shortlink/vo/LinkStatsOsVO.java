@@ -1,4 +1,4 @@
-package dev.haotangyuan.shortlink.dto.resp;
+package dev.haotangyuan.shortlink.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -6,14 +6,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 短链接高频访问 IP 监控响应参数
+ * 短链接操作系统监控响应参数
  * @author: haotangyuan
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LinkStatsTopIpRespDTO {
+public class LinkStatsOsVO {
 
     /**
      * 统计
@@ -21,7 +21,12 @@ public class LinkStatsTopIpRespDTO {
     private Integer cnt;
 
     /**
-     * IP
+     * 操作系统
      */
-    private String ip;
+    private String os;
+
+    /**
+     * 占比
+     */
+    private Double ratio;
 }

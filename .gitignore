@@ -49,4 +49,8 @@ shardingsphere-local.yaml
 
 .serena
 benchmark/
+.claude/
+.codex/
+openspec/
+com/
 

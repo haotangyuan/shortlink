@@ -9,7 +9,7 @@ import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
 import dev.haotangyuan.shortlink.dao.entity.TokenDO;
 import dev.haotangyuan.shortlink.dao.mapper.TokenMapper;
 import dev.haotangyuan.shortlink.dto.req.TokenCreateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.TokenRespDTO;
+import dev.haotangyuan.shortlink.vo.TokenVO;
 import dev.haotangyuan.shortlink.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,14 +50,14 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
     }
 
     @Override
-    public List<TokenRespDTO> listTokens() {
+    public List<TokenVO> listTokens() {
         String username = Objects.requireNonNull(UserContext.getUsername(), "用户未登录");
         LambdaQueryWrapper<TokenDO> qw = Wrappers.lambdaQuery(TokenDO.class)
                 .eq(TokenDO::getUsername, username)
                 .eq(TokenDO::getDelFlag, 0)
                 .orderByDesc(TokenDO::getUpdateTime);
         List<TokenDO> list = baseMapper.selectList(qw);
-        return list.stream().map(each -> TokenRespDTO.builder()
+        return list.stream().map(each -> TokenVO.builder()
                 .name(each.getName())
                 .enableStatus(each.getEnableStatus())
                 .validDate(each.getValidDate())

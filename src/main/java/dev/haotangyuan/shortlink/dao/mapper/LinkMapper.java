@@ -2,9 +2,10 @@ package dev.haotangyuan.shortlink.dao.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import dev.haotangyuan.shortlink.dao.entity.LinkDO;
 import dev.haotangyuan.shortlink.dto.req.LinkPageReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.GroupLinkCountQueryRespDTO;
+import dev.haotangyuan.shortlink.vo.GroupLinkCountQueryVO;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
@@ -55,7 +56,7 @@ public interface LinkMapper extends BaseMapper<LinkDO> {
             </choose>
             </script>
             """)
-    IPage<LinkDO> pageLink(@Param("p") LinkPageReqDTO linkPageReqDTO);
+    IPage<LinkDO> pageLink(Page<LinkDO> page, @Param("p") LinkPageReqDTO dto);
 
     /**
      * 查询分组短链接数量
@@ -75,5 +76,5 @@ public interface LinkMapper extends BaseMapper<LinkDO> {
             GROUP BY gid
             </script>
             """)
-    List<GroupLinkCountQueryRespDTO> listGroupLinkCount(@Param("gidList") List<String> gidList);
+    List<GroupLinkCountQueryVO> listGroupLinkCount(@Param("gidList") List<String> gidList);
 }

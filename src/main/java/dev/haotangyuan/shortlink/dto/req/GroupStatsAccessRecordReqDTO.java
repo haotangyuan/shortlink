@@ -1,7 +1,5 @@
 package dev.haotangyuan.shortlink.dto.req;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import dev.haotangyuan.shortlink.dao.entity.LinkAccessLogsDO;
 import lombok.Data;
 
 /**
@@ -9,7 +7,7 @@ import lombok.Data;
  * @author: haotangyuan
  */
 @Data
-public class GroupStatsAccessRecordReqDTO extends Page<LinkAccessLogsDO> {
+public class GroupStatsAccessRecordReqDTO extends PageReqDTO {
 
     /**
      * 分组标识

@@ -5,8 +5,8 @@ import dev.haotangyuan.shortlink.dto.req.GroupStatsAccessRecordReqDTO;
 import dev.haotangyuan.shortlink.dto.req.GroupStatsReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkStatsAccessRecordReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkStatsReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkStatsAccessRecordRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkStatsRespDTO;
+import dev.haotangyuan.shortlink.vo.LinkStatsAccessRecordVO;
+import dev.haotangyuan.shortlink.vo.LinkStatsVO;
 
 /**
  * 访问统计接口层
@@ -19,26 +19,26 @@ public interface LinkStatsService {
      * @param linkStatsReqDTO 获取短链接监控数据入参
      * @return 短链接监控数据
      */
-    LinkStatsRespDTO oneShortLinkStats(LinkStatsReqDTO linkStatsReqDTO);
+    LinkStatsVO oneShortLinkStats(LinkStatsReqDTO linkStatsReqDTO);
 
     /**
      * 访问单个短链接指定时间内访问记录监控数据
      * @param linkStatsAccessRecordReqDTO 获取短链接监控访问记录数据入参
      * @return 访问记录监控数据
      */
-    IPage<LinkStatsAccessRecordRespDTO> shortLinkStatsAccessRecord(LinkStatsAccessRecordReqDTO linkStatsAccessRecordReqDTO);
+    IPage<LinkStatsAccessRecordVO> shortLinkStatsAccessRecord(LinkStatsAccessRecordReqDTO linkStatsAccessRecordReqDTO);
 
     /**
      * 获取分组短链接监控数据
      * @param groupStatsReqDTO 获取分组短链接监控数据入参
      * @return 短链接监控数据
      */
-    LinkStatsRespDTO groupShortLinkStats(GroupStatsReqDTO groupStatsReqDTO);
+    LinkStatsVO groupShortLinkStats(GroupStatsReqDTO groupStatsReqDTO);
 
     /**
      * 访问分组短链接指定时间内访问记录监控数据
      * @param groupStatsAccessRecordReqDTO 获取分组短链接监控访问记录数据入参
      * @return 访问记录监控数据
      */
-    IPage<LinkStatsAccessRecordRespDTO> groupShortLinkStatsAccessRecord(GroupStatsAccessRecordReqDTO groupStatsAccessRecordReqDTO);
+    IPage<LinkStatsAccessRecordVO> groupShortLinkStatsAccessRecord(GroupStatsAccessRecordReqDTO groupStatsAccessRecordReqDTO);
 }

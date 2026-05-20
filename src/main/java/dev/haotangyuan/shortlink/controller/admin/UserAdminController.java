@@ -6,9 +6,9 @@ import dev.haotangyuan.shortlink.common.convention.result.Results;
 import dev.haotangyuan.shortlink.dto.req.UserLoginReqDTO;
 import dev.haotangyuan.shortlink.dto.req.UserRegisterReqDTO;
 import dev.haotangyuan.shortlink.dto.req.UserUpdateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.UserActualRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.UserLoginRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.UserRespDTO;
+import dev.haotangyuan.shortlink.vo.UserActualVO;
+import dev.haotangyuan.shortlink.vo.UserLoginVO;
+import dev.haotangyuan.shortlink.vo.UserVO;
 import dev.haotangyuan.shortlink.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +27,7 @@ public class UserAdminController {
      * 根据用户名查找用户
      */
     @GetMapping("/api/short-link/admin/v1/user/{username}")
-    public Result<UserRespDTO> getUserByUsername(@PathVariable("username") String username) {
+    public Result<UserVO> getUserByUsername(@PathVariable("username") String username) {
         return Results.success(userService.getByUsername(username));
     }
 
@@ -35,8 +35,8 @@ public class UserAdminController {
      * 根据用户名查找用户无脱敏
      */
     @GetMapping("/api/short-link/admin/v1/actual/user/{username}")
-    public Result<UserActualRespDTO> getActualUserByUsername(@PathVariable("username") String username) {
-        return Results.success(BeanUtil.toBean(userService.getByUsername(username), UserActualRespDTO.class));
+    public Result<UserActualVO> getActualUserByUsername(@PathVariable("username") String username) {
+        return Results.success(BeanUtil.toBean(userService.getByUsername(username), UserActualVO.class));
     }
 
     /**
@@ -69,7 +69,7 @@ public class UserAdminController {
      * 用户登录
      */
     @PostMapping("/api/short-link/admin/v1/user/login")
-    public Result<UserLoginRespDTO> login(@RequestBody UserLoginReqDTO userLoginReqDTO) {
+    public Result<UserLoginVO> login(@RequestBody UserLoginReqDTO userLoginReqDTO) {
         return Results.success(userService.login(userLoginReqDTO));
     }
 

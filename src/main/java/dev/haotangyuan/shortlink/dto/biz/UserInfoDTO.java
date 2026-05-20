@@ -1,4 +1,4 @@
-package dev.haotangyuan.shortlink.common.biz.user;
+package dev.haotangyuan.shortlink.dto.biz;
 
 import com.alibaba.fastjson2.annotation.JSONField;
 import lombok.AllArgsConstructor;

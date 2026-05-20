@@ -1,6 +1,5 @@
-package dev.haotangyuan.shortlink.dto.resp;
+package dev.haotangyuan.shortlink.vo;
 
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
@@ -11,7 +10,7 @@ import java.util.Date;
  * @author: haotangyuan
  */
 @Data
-public class LinkPageRespDTO {
+public class LinkPageVO {
     /**
      * id
      */
@@ -62,7 +61,6 @@ public class LinkPageRespDTO {
     /**
      * 描述
      */
-    @TableField("`describe`")
     private String describe;
 
     /**
@@ -88,19 +86,16 @@ public class LinkPageRespDTO {
     /**
      * 今日PV
      */
-    @TableField(exist = false)
     private Integer todayPv;
 
     /**
      * 今日UV
      */
-    @TableField(exist = false)
     private Integer todayUv;
 
     /**
      * 今日UIP
      */
-    @TableField(exist = false)
     private Integer todayUip;
 
     /**

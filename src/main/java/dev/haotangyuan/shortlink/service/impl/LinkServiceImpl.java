@@ -12,6 +12,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import dev.haotangyuan.shortlink.common.biz.user.GroupOwnershipVerifier;
 import dev.haotangyuan.shortlink.common.biz.user.UserContext;
@@ -29,7 +30,7 @@ import dev.haotangyuan.shortlink.dto.req.LinkBatchCreateReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkCreateReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkPageReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkUpdateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.*;
+import dev.haotangyuan.shortlink.vo.*;
 import dev.haotangyuan.shortlink.mq.consumer.LinkStatsSaver;
 import dev.haotangyuan.shortlink.mq.producer.LinkStatsSaveProducer;
 import dev.haotangyuan.shortlink.service.LinkService;
@@ -110,7 +111,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
 
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public LinkCreateRespDTO createLink(LinkCreateReqDTO linkCreateReqDTO) {
+    public LinkCreateVO createLink(LinkCreateReqDTO linkCreateReqDTO) {
         // 未登录（public）创建：强制使用公共分组
         String currentUsername = UserContext.getUsername();
         if (java.util.Objects.equals(currentUsername, PUBLIC_USERNAME)) {
@@ -194,7 +195,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             log.warn("Clear negative cache on create error, fullShortUrl={}", fullShortUrl, t);
         }
         shortUriCreateCachePenetrationBloomFilter.add(fullShortUrl);
-        return LinkCreateRespDTO.builder()
+        return LinkCreateVO.builder()
                 .fullShortUrl("http://" + shortLinkDO.getFullShortUrl())
                 .originUrl(linkCreateReqDTO.getOriginUrl())
                 .gid(linkCreateReqDTO.getGid())
@@ -301,10 +302,11 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     }
 
     @Override
-    public IPage<LinkPageRespDTO> pageLink(LinkPageReqDTO linkPageReqDTO) {
+    public IPage<LinkPageVO> pageLink(LinkPageReqDTO linkPageReqDTO) {
         // 鉴权：校验分组归属
         groupOwnershipService.assertOwnedByCurrentUser(linkPageReqDTO.getGid());
-        IPage<LinkDO> resultPage = baseMapper.pageLink(linkPageReqDTO);
+        Page<LinkDO> page = new Page<>(linkPageReqDTO.getCurrent(), linkPageReqDTO.getSize());
+        IPage<LinkDO> resultPage = baseMapper.pageLink(page, linkPageReqDTO);
         
         // 获取所有短链接列表以批量计算今日 UV/UIP
         List<String> fullShortUrls = resultPage.getRecords().stream()
@@ -315,7 +317,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         Map<String, int[]> todayStatsMap = batchGetTodayStats(fullShortUrls);
         
         return resultPage.convert(each -> {
-            LinkPageRespDTO bean = BeanUtil.toBean(each, LinkPageRespDTO.class);
+            LinkPageVO bean = BeanUtil.toBean(each, LinkPageVO.class);
             bean.setDomain("http://" + bean.getDomain());
             
             // 设置今日统计
@@ -408,7 +410,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     }
 
     @Override
-    public List<GroupLinkCountQueryRespDTO> listGroupLinkCount(List<String> gidList) {
+    public List<GroupLinkCountQueryVO> listGroupLinkCount(List<String> gidList) {
         // 鉴权：校验分组列表归属
         groupOwnershipService.assertAllOwnedByCurrentUser(gidList);
         if (CollUtil.isEmpty(gidList)) {
@@ -521,17 +523,17 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     }
 
     @Override
-    public LinkBatchCreateRespDTO batchCreateLink(LinkBatchCreateReqDTO linkBatchCreateReqDTO) {
+    public LinkBatchCreateVO batchCreateLink(LinkBatchCreateReqDTO linkBatchCreateReqDTO) {
         List<String> originUrls = linkBatchCreateReqDTO.getOriginUrls();
         List<String> describes = linkBatchCreateReqDTO.getDescribes();
-        List<LinkBaseInfoRespDTO> result = new ArrayList<>();
+        List<LinkBaseInfoVO> result = new ArrayList<>();
         for (int i = 0; i < originUrls.size(); i++) {
             LinkCreateReqDTO shortLinkCreateReqDTO = BeanUtil.toBean(linkBatchCreateReqDTO, LinkCreateReqDTO.class);
             shortLinkCreateReqDTO.setOriginUrl(originUrls.get(i));
             shortLinkCreateReqDTO.setDescribe(describes.get(i));
             try {
-                LinkCreateRespDTO shortLink = createLink(shortLinkCreateReqDTO);
-                LinkBaseInfoRespDTO linkBaseInfoRespDTO = LinkBaseInfoRespDTO.builder()
+                LinkCreateVO shortLink = createLink(shortLinkCreateReqDTO);
+                LinkBaseInfoVO linkBaseInfoRespDTO = LinkBaseInfoVO.builder()
                         .fullShortUrl(shortLink.getFullShortUrl())
                         .originUrl(shortLink.getOriginUrl())
                         .describe(describes.get(i))
@@ -541,7 +543,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                 log.error("批量创建短链接失败，原始参数：{}", originUrls.get(i));
             }
         }
-        return LinkBatchCreateRespDTO.builder()
+        return LinkBatchCreateVO.builder()
                 .total(result.size())
                 .baseLinkInfos(result)
                 .build();

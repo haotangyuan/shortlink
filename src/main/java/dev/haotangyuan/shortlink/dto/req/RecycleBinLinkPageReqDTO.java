@@ -1,7 +1,5 @@
 package dev.haotangyuan.shortlink.dto.req;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import dev.haotangyuan.shortlink.dao.entity.LinkDO;
 import lombok.Data;
 
 import java.util.List;
@@ -11,7 +9,7 @@ import java.util.List;
  * @author: haotangyuan
  */
 @Data
-public class RecycleBinLinkPageReqDTO extends Page<LinkDO> {
+public class RecycleBinLinkPageReqDTO extends PageReqDTO {
 
     /**
      * 分组列表

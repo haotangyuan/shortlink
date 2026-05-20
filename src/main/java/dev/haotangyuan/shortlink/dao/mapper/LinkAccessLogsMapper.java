@@ -2,6 +2,7 @@ package dev.haotangyuan.shortlink.dao.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import dev.haotangyuan.shortlink.dao.entity.LinkAccessLogsDO;
 import dev.haotangyuan.shortlink.dao.entity.LinkAccessStatsDO;
 import dev.haotangyuan.shortlink.dto.req.GroupStatsAccessRecordReqDTO;
@@ -146,6 +147,6 @@ public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
                 AND tls.create_time BETWEEN #{param.startDate} AND #{param.endDate}
             ORDER BY tls.create_time DESC
             """)
-    IPage<LinkAccessLogsDO> selectGroupPage(@Param("param") GroupStatsAccessRecordReqDTO groupStatsAccessRecordReqDTO);
+    IPage<LinkAccessLogsDO> selectGroupPage(Page<LinkAccessLogsDO> page, @Param("param") GroupStatsAccessRecordReqDTO groupStatsAccessRecordReqDTO);
 
 }

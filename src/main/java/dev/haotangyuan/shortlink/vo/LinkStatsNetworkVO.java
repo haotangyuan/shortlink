@@ -1,4 +1,4 @@
-package dev.haotangyuan.shortlink.dto.resp;
+package dev.haotangyuan.shortlink.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -6,14 +6,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 短链接访客监控响应参数
+ * 短链接访问网络监控响应参数
  * @author: haotangyuan
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LinkStatsUvRespDTO {
+public class LinkStatsNetworkVO {
 
     /**
      * 统计
@@ -21,9 +21,9 @@ public class LinkStatsUvRespDTO {
     private Integer cnt;
 
     /**
-     * 访客类型
+     * 访问网络
      */
-    private String uvType;
+    private String network;
 
     /**
      * 占比

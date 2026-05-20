@@ -1,4 +1,4 @@
-package dev.haotangyuan.shortlink.dto.resp;
+package dev.haotangyuan.shortlink.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -6,19 +6,19 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 短链接创建响应参数
+ * 短链接基础信息响应参数
  * @author: haotangyuan
  */
 @Data
 @Builder
-@NoArgsConstructor
 @AllArgsConstructor
-public class LinkCreateRespDTO {
+@NoArgsConstructor
+public class LinkBaseInfoVO {
 
     /**
-     * 分组标识
+     * 描述信息
      */
-    private String gid;
+    private String describe;
 
     /**
      * 原始链接

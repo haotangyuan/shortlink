@@ -13,8 +13,8 @@ import dev.haotangyuan.shortlink.dao.entity.GroupDO;
 import dev.haotangyuan.shortlink.dao.mapper.GroupMapper;
 import dev.haotangyuan.shortlink.dto.req.GroupSortReqDTO;
 import dev.haotangyuan.shortlink.dto.req.GroupUpdateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.GroupLinkCountQueryRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.GroupRespDTO;
+import dev.haotangyuan.shortlink.vo.GroupLinkCountQueryVO;
+import dev.haotangyuan.shortlink.vo.GroupVO;
 import dev.haotangyuan.shortlink.service.GroupService;
 import dev.haotangyuan.shortlink.service.LinkService;
 import dev.haotangyuan.shortlink.toolkit.RandomGenerator;
@@ -145,17 +145,17 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
     }
 
     @Override
-    public List<GroupRespDTO> listGroup() {
+    public List<GroupVO> listGroup() {
         Wrapper<GroupDO> queryWrapper = Wrappers.lambdaQuery(GroupDO.class)
                 .eq(GroupDO::getDelFlag, 0)
                 .eq(GroupDO::getUsername, UserContext.getUsername())
                 .orderByDesc(GroupDO::getSortOrder, GroupDO::getUpdateTime);
         List<GroupDO> groupDOList = baseMapper.selectList(queryWrapper);
-        List<GroupLinkCountQueryRespDTO> listResult = linkService
+        List<GroupLinkCountQueryVO> listResult = linkService
                 .listGroupLinkCount(groupDOList.stream().map(GroupDO::getGid).toList());
-        List<GroupRespDTO> groupRespDTOList = BeanUtil.copyToList(groupDOList, GroupRespDTO.class);
+        List<GroupVO> groupRespDTOList = BeanUtil.copyToList(groupDOList, GroupVO.class);
         groupRespDTOList.forEach(each -> {
-            Optional<GroupLinkCountQueryRespDTO> first = listResult.stream()
+            Optional<GroupLinkCountQueryVO> first = listResult.stream()
                     .filter(item -> Objects.equals(item.getGid(), each.getGid()))
                     .findFirst();
             first.ifPresent(item -> {each.setLinkCount(first.get().getLinkCount());});

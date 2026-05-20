@@ -1,4 +1,4 @@
-package dev.haotangyuan.shortlink.dto.resp;
+package dev.haotangyuan.shortlink.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,7 +15,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LinkStatsRespDTO {
+public class LinkStatsVO {
 
     /**
      * 访问量
@@ -35,12 +35,12 @@ public class LinkStatsRespDTO {
     /**
      * 基础访问详情
      */
-    private List<LinkStatsAccessDailyRespDTO> daily;
+    private List<LinkStatsAccessDailyVO> daily;
 
     /**
      * 地区访问详情
      */
-    private List<LinkStatsLocaleCNRespDTO> localeCnStats;
+    private List<LinkStatsLocaleCNVO> localeCnStats;
 
     /**
      * 小时访问详情
@@ -50,7 +50,7 @@ public class LinkStatsRespDTO {
     /**
      * 高频访问IP详情
      */
-    private List<LinkStatsTopIpRespDTO> topIpStats;
+    private List<LinkStatsTopIpVO> topIpStats;
 
     /**
      * 一周访问详情
@@ -60,25 +60,25 @@ public class LinkStatsRespDTO {
     /**
      * 浏览器访问详情
      */
-    private List<LinkStatsBrowserRespDTO> browserStats;
+    private List<LinkStatsBrowserVO> browserStats;
 
     /**
      * 操作系统访问详情
      */
-    private List<LinkStatsOsRespDTO> osStats;
+    private List<LinkStatsOsVO> osStats;
 
     /**
      * 访客访问类型详情
      */
-    private List<LinkStatsUvRespDTO> uvTypeStats;
+    private List<LinkStatsUvVO> uvTypeStats;
 
     /**
      * 访问设备类型详情
      */
-    private List<LinkStatsDeviceRespDTO> deviceStats;
+    private List<LinkStatsDeviceVO> deviceStats;
 
     /**
      * 访问网络类型详情
      */
-    private List<LinkStatsNetworkRespDTO> networkStats;
+    private List<LinkStatsNetworkVO> networkStats;
 }

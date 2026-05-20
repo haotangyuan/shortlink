@@ -1,7 +1,7 @@
 package dev.haotangyuan.shortlink.service;
 
 import dev.haotangyuan.shortlink.dto.req.TokenCreateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.TokenRespDTO;
+import dev.haotangyuan.shortlink.vo.TokenVO;
 
 import java.util.List;
 
@@ -13,7 +13,7 @@ public interface TokenService {
     String createToken(TokenCreateReqDTO req);
 
     /** 列出当前用户的所有令牌（脱敏显示 token） */
-    List<TokenRespDTO> listTokens();
+    List<TokenVO> listTokens();
 
     /** 吊销（删除）令牌 */
     void deleteToken(Long id);

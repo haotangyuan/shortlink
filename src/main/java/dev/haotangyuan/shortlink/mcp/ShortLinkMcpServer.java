@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.haotangyuan.shortlink.common.biz.user.UserContext;
 import dev.haotangyuan.shortlink.common.constant.UserConstant;
 import dev.haotangyuan.shortlink.dto.req.LinkCreateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkCreateRespDTO;
+import dev.haotangyuan.shortlink.vo.LinkCreateVO;
 import dev.haotangyuan.shortlink.service.LinkService;
 import io.modelcontextprotocol.server.McpServer;
 import io.modelcontextprotocol.server.McpSyncServer;
@@ -118,7 +118,7 @@ public class ShortLinkMcpServer {
                         java.util.Date validDate = cn.hutool.core.date.DateUtil.offsetDay(new java.util.Date(), 3);
                         linkRequest.setValidDate(validDate);
 
-                        LinkCreateRespDTO linkResponse = linkService.createLink(linkRequest);
+                        LinkCreateVO linkResponse = linkService.createLink(linkRequest);
 
                         String text = String.format(
                                 "Short link created successfully!\n" +

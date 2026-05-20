@@ -17,8 +17,8 @@ import dev.haotangyuan.shortlink.dao.mapper.UserMapper;
 import dev.haotangyuan.shortlink.dto.req.UserLoginReqDTO;
 import dev.haotangyuan.shortlink.dto.req.UserRegisterReqDTO;
 import dev.haotangyuan.shortlink.dto.req.UserUpdateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.UserLoginRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.UserRespDTO;
+import dev.haotangyuan.shortlink.vo.UserLoginVO;
+import dev.haotangyuan.shortlink.vo.UserVO;
 import dev.haotangyuan.shortlink.service.GroupService;
 import dev.haotangyuan.shortlink.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -62,14 +62,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
     private static final String USER_GIDS_REFRESH_LUA_SCRIPT_PATH = "lua/user_gids_refresh.lua";
 
     @Override
-    public UserRespDTO getByUsername(String username) {
+    public UserVO getByUsername(String username) {
         LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
                 .eq(UserDO::getUsername, username);
         UserDO userDO = baseMapper.selectOne(queryWrapper);
         if (userDO == null) {
             throw new ClientException(BaseErrorCode.USER_NULL);
         }
-        UserRespDTO result = new UserRespDTO();
+        UserVO result = new UserVO();
         BeanUtils.copyProperties(userDO, result);
         return result;
     }
@@ -112,7 +112,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
     }
 
     @Override
-    public UserLoginRespDTO login(UserLoginReqDTO userLoginReqDTO) {
+    public UserLoginVO login(UserLoginReqDTO userLoginReqDTO) {
         LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
                 .eq(UserDO::getUsername, userLoginReqDTO.getUsername())
                 .eq(UserDO::getPassword, userLoginReqDTO.getPassword())
@@ -132,7 +132,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
             stringRedisTemplate.expire(USER_LOGIN_KEY + userLoginReqDTO.getUsername(), 30, TimeUnit.MINUTES);
             // 刷新该用户 GID 正向索引集合 TTL（并补齐集合）
             refreshUserGidsIndex(userLoginReqDTO.getUsername());
-            return new UserLoginRespDTO(token);
+            return new UserLoginVO(token);
         }
         // 生成新 token，并同时写入会话映射与兼容的用户名 Hash
         String uuid = UUID.randomUUID().toString();
@@ -141,7 +141,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         stringRedisTemplate.expire(USER_LOGIN_KEY + userLoginReqDTO.getUsername(), 30, TimeUnit.MINUTES);
         // 刷新该用户 GID 正向索引集合 TTL（并补齐集合）
         refreshUserGidsIndex(userLoginReqDTO.getUsername());
-        return new UserLoginRespDTO(uuid);
+        return new UserLoginVO(uuid);
     }
 
     @Override

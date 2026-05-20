@@ -7,9 +7,9 @@ import dev.haotangyuan.shortlink.dto.req.LinkBatchCreateReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkCreateReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkPageReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkUpdateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkBatchCreateRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkCreateRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkPageRespDTO;
+import dev.haotangyuan.shortlink.vo.LinkBatchCreateVO;
+import dev.haotangyuan.shortlink.vo.LinkCreateVO;
+import dev.haotangyuan.shortlink.vo.LinkPageVO;
 import dev.haotangyuan.shortlink.service.LinkService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,7 +33,7 @@ public class LinkAdminController {
      * @return Result
      */
     @PostMapping("/api/short-link/admin/v1/create")
-    public Result<LinkCreateRespDTO> createLink(@RequestBody LinkCreateReqDTO linkCreateReqDTO) {
+    public Result<LinkCreateVO> createLink(@RequestBody LinkCreateReqDTO linkCreateReqDTO) {
         return Results.success(linkService.createLink(linkCreateReqDTO));
     }
 
@@ -41,7 +41,7 @@ public class LinkAdminController {
      * 批量创建短链接
      */
     @PostMapping("/api/short-link/admin/v1/create/batch")
-    public Result<LinkBatchCreateRespDTO> batchCreateShortLink(@RequestBody LinkBatchCreateReqDTO linkBatchCreateReqDTO) {
+    public Result<LinkBatchCreateVO> batchCreateShortLink(@RequestBody LinkBatchCreateReqDTO linkBatchCreateReqDTO) {
         return Results.success(linkService.batchCreateLink(linkBatchCreateReqDTO));
     }
 
@@ -59,10 +59,10 @@ public class LinkAdminController {
     /**
      * 短链接分页查询
      * @param linkPageReqDTO 分页请求参数
-     * @return Result<IPage<LinkPageRespDTO>>
+     * @return Result<IPage<LinkPageVO>>
      */
     @GetMapping("/api/short-link/admin/v1/page")
-    public Result<IPage<LinkPageRespDTO>> pageLink(LinkPageReqDTO linkPageReqDTO) {
+    public Result<IPage<LinkPageVO>> pageLink(LinkPageReqDTO linkPageReqDTO) {
         return Results.success(linkService.pageLink(linkPageReqDTO));
     }
 }

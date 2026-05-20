@@ -5,7 +5,7 @@ import dev.haotangyuan.shortlink.common.convention.result.Results;
 import dev.haotangyuan.shortlink.dto.req.GroupSaveReqDTO;
 import dev.haotangyuan.shortlink.dto.req.GroupSortReqDTO;
 import dev.haotangyuan.shortlink.dto.req.GroupUpdateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.GroupRespDTO;
+import dev.haotangyuan.shortlink.vo.GroupVO;
 import dev.haotangyuan.shortlink.service.GroupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -38,7 +38,7 @@ public class GroupAdminController {
      * @return
      */
     @GetMapping("/api/short-link/admin/v1/group")
-    public Result<List<GroupRespDTO>> listGroup() {
+    public Result<List<GroupVO>> listGroup() {
         return Results.success(groupService.listGroup());
     }
 

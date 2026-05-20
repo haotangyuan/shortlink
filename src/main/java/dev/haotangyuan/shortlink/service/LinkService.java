@@ -1,17 +1,15 @@
 package dev.haotangyuan.shortlink.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.service.IService;
-import dev.haotangyuan.shortlink.dao.entity.LinkDO;
 import dev.haotangyuan.shortlink.dto.biz.LinkStatsRecordDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkBatchCreateReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkCreateReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkPageReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkUpdateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.GroupLinkCountQueryRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkBatchCreateRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkCreateRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkPageRespDTO;
+import dev.haotangyuan.shortlink.vo.GroupLinkCountQueryVO;
+import dev.haotangyuan.shortlink.vo.LinkBatchCreateVO;
+import dev.haotangyuan.shortlink.vo.LinkCreateVO;
+import dev.haotangyuan.shortlink.vo.LinkPageVO;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 
@@ -21,14 +19,14 @@ import java.util.List;
  * 短链接接口层
  * @author: haotangyuan
  */
-public interface LinkService extends IService<LinkDO> {
+public interface LinkService {
 
     /**
      * 创建短链接
      * @param linkCreateReqDTO
      * @return
      */
-    LinkCreateRespDTO createLink(LinkCreateReqDTO linkCreateReqDTO);
+    LinkCreateVO createLink(LinkCreateReqDTO linkCreateReqDTO);
 
     /**
      * 更新短链接
@@ -39,16 +37,16 @@ public interface LinkService extends IService<LinkDO> {
     /**
      * 短链接分页查询
      * @param linkPageReqDTO 分页请求参数
-     * @return IPage<LinkPageRespDTO>
+     * @return IPage<LinkPageVO>
      */
-    IPage<LinkPageRespDTO> pageLink(LinkPageReqDTO linkPageReqDTO);
+    IPage<LinkPageVO> pageLink(LinkPageReqDTO linkPageReqDTO);
 
     /**
      * 查询分组内短链接数量
      * @param gidList 分组标识列表
-     * @return List<GroupLinkCountQueryRespDTO>
+     * @return List<GroupLinkCountQueryVO>
      */
-    List<GroupLinkCountQueryRespDTO> listGroupLinkCount(List<String> gidList);
+    List<GroupLinkCountQueryVO> listGroupLinkCount(List<String> gidList);
 
     /**
      * 根据短链接还原原始链接
@@ -61,9 +59,9 @@ public interface LinkService extends IService<LinkDO> {
     /**
      * 批量创建短链接
      * @param linkBatchCreateReqDTO 短链接批量创建请求参数
-     * @return LinkBatchCreateRespDTO
+     * @return LinkBatchCreateVO
      */
-    LinkBatchCreateRespDTO batchCreateLink(LinkBatchCreateReqDTO linkBatchCreateReqDTO);
+    LinkBatchCreateVO batchCreateLink(LinkBatchCreateReqDTO linkBatchCreateReqDTO);
 
     /**
      * 短链接统计

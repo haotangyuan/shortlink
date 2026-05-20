@@ -1,7 +1,5 @@
-package dev.haotangyuan.shortlink.dto.resp;
+package dev.haotangyuan.shortlink.vo;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import dev.haotangyuan.shortlink.common.serialize.PhoneDesensitizationSerializer;
 import lombok.Data;
 
 /**
@@ -9,7 +7,7 @@ import lombok.Data;
  * @author: haotangyuan
  */
 @Data
-public class UserRespDTO {
+public class UserActualVO {
     /**
      * ID
      */
@@ -28,7 +26,6 @@ public class UserRespDTO {
     /**
      * 手机号
      */
-    @JsonSerialize(using = PhoneDesensitizationSerializer.class)
     private String phone;
 
     /**

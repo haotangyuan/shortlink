@@ -1,4 +1,4 @@
-package dev.haotangyuan.shortlink.dto.resp;
+package dev.haotangyuan.shortlink.vo;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,7 +9,7 @@ import lombok.Data;
  */
 @Data
 @AllArgsConstructor
-public class UserLoginRespDTO {
+public class UserLoginVO {
     /**
      * 用户 token
      */

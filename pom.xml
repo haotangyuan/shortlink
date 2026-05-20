@@ -16,7 +16,7 @@
         <jjwt.version>0.9.1</jjwt.version>
         <fastjson2.version>2.0.36</fastjson2.version>
         <mybatis-plus.version>3.5.5</mybatis-plus.version>
-        <dozer-core.version>6.5.2</dozer-core.version>
+
         <hutool-all.version>5.8.20</hutool-all.version>
         <redisson.version>3.25.0</redisson.version>
         <guava.version>30.0-jre</guava.version>
@@ -189,11 +189,6 @@
                 <version>${fastjson2.version}</version>
             </dependency>
 
-            <dependency>
-                <groupId>com.github.dozermapper</groupId>
-                <artifactId>dozer-core</artifactId>
-                <version>${dozer-core.version}</version>
-            </dependency>
 
             <dependency>
                 <groupId>cn.hutool</groupId>

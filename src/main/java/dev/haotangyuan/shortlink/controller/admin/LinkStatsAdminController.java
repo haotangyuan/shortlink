@@ -7,8 +7,8 @@ import dev.haotangyuan.shortlink.dto.req.GroupStatsAccessRecordReqDTO;
 import dev.haotangyuan.shortlink.dto.req.GroupStatsReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkStatsAccessRecordReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkStatsReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkStatsAccessRecordRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkStatsRespDTO;
+import dev.haotangyuan.shortlink.vo.LinkStatsAccessRecordVO;
+import dev.haotangyuan.shortlink.vo.LinkStatsVO;
 import dev.haotangyuan.shortlink.service.LinkStatsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,7 +30,7 @@ public class LinkStatsAdminController {
      * @return 短链接监控数据
      */
     @GetMapping("/api/short-link/admin/v1/stats")
-    public Result<LinkStatsRespDTO> shortLinkStats(LinkStatsReqDTO linkStatsReqDTO) {
+    public Result<LinkStatsVO> shortLinkStats(LinkStatsReqDTO linkStatsReqDTO) {
         return Results.success(linkStatsService.oneShortLinkStats(linkStatsReqDTO));
     }
 
@@ -40,7 +40,7 @@ public class LinkStatsAdminController {
      * @return 短链接监控数据
      */
     @GetMapping("/api/short-link/admin/v1/stats/group")
-    public Result<LinkStatsRespDTO> groupShortLinkStats(GroupStatsReqDTO groupStatsReqDTO) {
+    public Result<LinkStatsVO> groupShortLinkStats(GroupStatsReqDTO groupStatsReqDTO) {
         return Results.success(linkStatsService.groupShortLinkStats(groupStatsReqDTO));
     }
 
@@ -50,7 +50,7 @@ public class LinkStatsAdminController {
      * @return 访问记录监控数据
      */
     @GetMapping("/api/short-link/admin/v1/stats/access-record")
-    public Result<IPage<LinkStatsAccessRecordRespDTO>> shortLinkStatsAccessRecord(LinkStatsAccessRecordReqDTO linkStatsAccessRecordReqDTO) {
+    public Result<IPage<LinkStatsAccessRecordVO>> shortLinkStatsAccessRecord(LinkStatsAccessRecordReqDTO linkStatsAccessRecordReqDTO) {
         return Results.success(linkStatsService.shortLinkStatsAccessRecord(linkStatsAccessRecordReqDTO));
     }
 
@@ -60,7 +60,7 @@ public class LinkStatsAdminController {
      * @return 访问记录监控数据
      */
     @GetMapping("/api/short-link/admin/v1/stats/access-record/group")
-    public Result<IPage<LinkStatsAccessRecordRespDTO>> groupShortLinkStatsAccessRecord(GroupStatsAccessRecordReqDTO groupStatsAccessRecordReqDTO) {
+    public Result<IPage<LinkStatsAccessRecordVO>> groupShortLinkStatsAccessRecord(GroupStatsAccessRecordReqDTO groupStatsAccessRecordReqDTO) {
         return Results.success(linkStatsService.groupShortLinkStatsAccessRecord(groupStatsAccessRecordReqDTO));
     }
 }

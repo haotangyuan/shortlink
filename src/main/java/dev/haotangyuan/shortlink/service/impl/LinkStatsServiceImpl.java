@@ -15,7 +15,7 @@ import dev.haotangyuan.shortlink.dto.req.GroupStatsAccessRecordReqDTO;
 import dev.haotangyuan.shortlink.dto.req.GroupStatsReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkStatsAccessRecordReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkStatsReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.*;
+import dev.haotangyuan.shortlink.vo.*;
 import dev.haotangyuan.shortlink.service.LinkStatsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +44,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     private final LinkNetworkStatsMapper linkNetworkStatsMapper;
 
     @Override
-    public LinkStatsRespDTO oneShortLinkStats(LinkStatsReqDTO linkStatsReqDTO) {
+    public LinkStatsVO oneShortLinkStats(LinkStatsReqDTO linkStatsReqDTO) {
         groupOwnershipService.assertOwnedByCurrentUser(linkStatsReqDTO.getGid());
         List<LinkAccessStatsDO> listStatsByShortLink = linkAccessStatsMapper.listStatsByShortLink(linkStatsReqDTO);
         if (CollUtil.isEmpty(listStatsByShortLink)) {
@@ -53,7 +53,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         // 基础访问数据
         LinkAccessStatsDO pvUvUidStatsByShortLink = linkAccessLogsMapper.findPvUvUidStatsByShortLink(linkStatsReqDTO);
         // 基础访问详情
-        List<LinkStatsAccessDailyRespDTO> daily = new ArrayList<>();
+        List<LinkStatsAccessDailyVO> daily = new ArrayList<>();
         List<String> rangeDates = DateUtil.rangeToList(DateUtil.parse(linkStatsReqDTO.getStartDate()), DateUtil.parse(linkStatsReqDTO.getEndDate()), DateField.DAY_OF_MONTH).stream()
                 .map(DateUtil::formatDate)
                 .toList();
@@ -61,7 +61,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .filter(item -> Objects.equals(each, DateUtil.formatDate(item.getDate())))
                 .findFirst()
                 .ifPresentOrElse(item -> {
-                    LinkStatsAccessDailyRespDTO accessDailyRespDTO = LinkStatsAccessDailyRespDTO.builder()
+                    LinkStatsAccessDailyVO accessDailyRespDTO = LinkStatsAccessDailyVO.builder()
                             .date(each)
                             .pv(item.getPv())
                             .uv(item.getUv())
@@ -69,7 +69,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                             .build();
                     daily.add(accessDailyRespDTO);
                 }, () -> {
-                    LinkStatsAccessDailyRespDTO accessDailyRespDTO = LinkStatsAccessDailyRespDTO.builder()
+                    LinkStatsAccessDailyVO accessDailyRespDTO = LinkStatsAccessDailyVO.builder()
                             .date(each)
                             .pv(0)
                             .uv(0)
@@ -78,7 +78,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                     daily.add(accessDailyRespDTO);
                 }));
         // 地区访问详情
-        List<LinkStatsLocaleCNRespDTO> localeCnStats = new ArrayList<>();
+        List<LinkStatsLocaleCNVO> localeCnStats = new ArrayList<>();
         List<LinkLocaleStatsDO> listedLocaleByShortLink = linkLocaleStatsMapper.listLocaleByShortLink(linkStatsReqDTO);
         int localeCnSum = listedLocaleByShortLink.stream()
                 .mapToInt(LinkLocaleStatsDO::getCnt)
@@ -86,7 +86,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         listedLocaleByShortLink.forEach(each -> {
             double ratio = (double) each.getCnt() / localeCnSum;
             double actualRatio = Math.round(ratio * 100.0) / 100.0;
-            LinkStatsLocaleCNRespDTO localeCNRespDTO = LinkStatsLocaleCNRespDTO.builder()
+            LinkStatsLocaleCNVO localeCNRespDTO = LinkStatsLocaleCNVO.builder()
                     .cnt(each.getCnt())
                     .locale(each.getProvince())
                     .ratio(actualRatio)
@@ -106,10 +106,10 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             hourStats.add(hourCnt);
         }
         // 高频访问IP详情
-        List<LinkStatsTopIpRespDTO> topIpStats = new ArrayList<>();
+        List<LinkStatsTopIpVO> topIpStats = new ArrayList<>();
         List<HashMap<String, Object>> listTopIpByShortLink = linkAccessLogsMapper.listTopIpByShortLink(linkStatsReqDTO);
         listTopIpByShortLink.forEach(each -> {
-            LinkStatsTopIpRespDTO statsTopIpRespDTO = LinkStatsTopIpRespDTO.builder()
+            LinkStatsTopIpVO statsTopIpRespDTO = LinkStatsTopIpVO.builder()
                     .ip(each.get("ip").toString())
                     .cnt(Integer.parseInt(each.get("count").toString()))
                     .build();
@@ -128,7 +128,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             weekdayStats.add(weekdayCnt);
         }
         // 浏览器访问详情
-        List<LinkStatsBrowserRespDTO> browserStats = new ArrayList<>();
+        List<LinkStatsBrowserVO> browserStats = new ArrayList<>();
         List<HashMap<String, Object>> listBrowserStatsByShortLink = linkBrowserStatsMapper.listBrowserStatsByShortLink(linkStatsReqDTO);
         int browserSum = listBrowserStatsByShortLink.stream()
                 .mapToInt(each -> Integer.parseInt(each.get("count").toString()))
@@ -136,7 +136,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         listBrowserStatsByShortLink.forEach(each -> {
             double ratio = (double) Integer.parseInt(each.get("count").toString()) / browserSum;
             double actualRatio = Math.round(ratio * 100.0) / 100.0;
-            LinkStatsBrowserRespDTO browserRespDTO = LinkStatsBrowserRespDTO.builder()
+            LinkStatsBrowserVO browserRespDTO = LinkStatsBrowserVO.builder()
                     .cnt(Integer.parseInt(each.get("count").toString()))
                     .browser(each.get("browser").toString())
                     .ratio(actualRatio)
@@ -144,7 +144,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             browserStats.add(browserRespDTO);
         });
         // 操作系统访问详情
-        List<LinkStatsOsRespDTO> osStats = new ArrayList<>();
+        List<LinkStatsOsVO> osStats = new ArrayList<>();
         List<HashMap<String, Object>> listOsStatsByShortLink = linkOsStatsMapper.listOsStatsByShortLink(linkStatsReqDTO);
         int osSum = listOsStatsByShortLink.stream()
                 .mapToInt(each -> Integer.parseInt(each.get("count").toString()))
@@ -152,7 +152,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         listOsStatsByShortLink.forEach(each -> {
             double ratio = (double) Integer.parseInt(each.get("count").toString()) / osSum;
             double actualRatio = Math.round(ratio * 100.0) / 100.0;
-            LinkStatsOsRespDTO osRespDTO = LinkStatsOsRespDTO.builder()
+            LinkStatsOsVO osRespDTO = LinkStatsOsVO.builder()
                     .cnt(Integer.parseInt(each.get("count").toString()))
                     .os(each.get("os").toString())
                     .ratio(actualRatio)
@@ -160,7 +160,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             osStats.add(osRespDTO);
         });
         // 访客访问类型详情
-        List<LinkStatsUvRespDTO> uvTypeStats = new ArrayList<>();
+        List<LinkStatsUvVO> uvTypeStats = new ArrayList<>();
         HashMap<String, Object> findUvTypeByShortLink = linkAccessLogsMapper.findUvTypeCntByShortLink(linkStatsReqDTO);
         int oldUserCnt = Integer.parseInt(
                 Optional.ofNullable(findUvTypeByShortLink)
@@ -179,20 +179,20 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         double actualOldRatio = Math.round(oldRatio * 100.0) / 100.0;
         double newRatio = (double) newUserCnt / uvSum;
         double actualNewRatio = Math.round(newRatio * 100.0) / 100.0;
-        LinkStatsUvRespDTO newUvRespDTO = LinkStatsUvRespDTO.builder()
+        LinkStatsUvVO newUvRespDTO = LinkStatsUvVO.builder()
                 .uvType("newUser")
                 .cnt(newUserCnt)
                 .ratio(actualNewRatio)
                 .build();
         uvTypeStats.add(newUvRespDTO);
-        LinkStatsUvRespDTO oldUvRespDTO = LinkStatsUvRespDTO.builder()
+        LinkStatsUvVO oldUvRespDTO = LinkStatsUvVO.builder()
                 .uvType("oldUser")
                 .cnt(oldUserCnt)
                 .ratio(actualOldRatio)
                 .build();
         uvTypeStats.add(oldUvRespDTO);
         // 访问设备类型详情
-        List<LinkStatsDeviceRespDTO> deviceStats = new ArrayList<>();
+        List<LinkStatsDeviceVO> deviceStats = new ArrayList<>();
         List<LinkDeviceStatsDO> listDeviceStatsByShortLink = linkDeviceStatsMapper.listDeviceStatsByShortLink(linkStatsReqDTO);
         int deviceSum = listDeviceStatsByShortLink.stream()
                 .mapToInt(LinkDeviceStatsDO::getCnt)
@@ -200,7 +200,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         listDeviceStatsByShortLink.forEach(each -> {
             double ratio = (double) each.getCnt() / deviceSum;
             double actualRatio = Math.round(ratio * 100.0) / 100.0;
-            LinkStatsDeviceRespDTO deviceRespDTO = LinkStatsDeviceRespDTO.builder()
+            LinkStatsDeviceVO deviceRespDTO = LinkStatsDeviceVO.builder()
                     .cnt(each.getCnt())
                     .device(each.getDevice())
                     .ratio(actualRatio)
@@ -208,7 +208,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             deviceStats.add(deviceRespDTO);
         });
         // 访问网络类型详情
-        List<LinkStatsNetworkRespDTO> networkStats = new ArrayList<>();
+        List<LinkStatsNetworkVO> networkStats = new ArrayList<>();
         List<LinkNetworkStatsDO> listNetworkStatsByShortLink = linkNetworkStatsMapper.listNetworkStatsByShortLink(linkStatsReqDTO);
         int networkSum = listNetworkStatsByShortLink.stream()
                 .mapToInt(LinkNetworkStatsDO::getCnt)
@@ -216,14 +216,14 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         listNetworkStatsByShortLink.forEach(each -> {
             double ratio = (double) each.getCnt() / networkSum;
             double actualRatio = Math.round(ratio * 100.0) / 100.0;
-            LinkStatsNetworkRespDTO networkRespDTO = LinkStatsNetworkRespDTO.builder()
+            LinkStatsNetworkVO networkRespDTO = LinkStatsNetworkVO.builder()
                     .cnt(each.getCnt())
                     .network(each.getNetwork())
                     .ratio(actualRatio)
                     .build();
             networkStats.add(networkRespDTO);
         });
-        return LinkStatsRespDTO.builder()
+        return LinkStatsVO.builder()
                 .pv(pvUvUidStatsByShortLink.getPv())
                 .uv(pvUvUidStatsByShortLink.getUv())
                 .uip(pvUvUidStatsByShortLink.getUip())
@@ -241,19 +241,20 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     }
 
     @Override
-    public IPage<LinkStatsAccessRecordRespDTO> shortLinkStatsAccessRecord(LinkStatsAccessRecordReqDTO linkStatsAccessRecordReqDTO) {
+    public IPage<LinkStatsAccessRecordVO> shortLinkStatsAccessRecord(LinkStatsAccessRecordReqDTO linkStatsAccessRecordReqDTO) {
         groupOwnershipService.assertOwnedByCurrentUser(linkStatsAccessRecordReqDTO.getGid());
         LambdaQueryWrapper<LinkAccessLogsDO> queryWrapper = Wrappers.lambdaQuery(LinkAccessLogsDO.class)
                 .eq(LinkAccessLogsDO::getFullShortUrl, linkStatsAccessRecordReqDTO.getFullShortUrl())
                 .between(LinkAccessLogsDO::getCreateTime, linkStatsAccessRecordReqDTO.getStartDate(), linkStatsAccessRecordReqDTO.getEndDate())
                 .eq(LinkAccessLogsDO::getDelFlag, 0)
                 .orderByDesc(LinkAccessLogsDO::getCreateTime);
-        IPage<LinkAccessLogsDO> linkAccessLogsDOIPage = linkAccessLogsMapper.selectPage(linkStatsAccessRecordReqDTO, queryWrapper);
+        Page<LinkAccessLogsDO> page = new Page<>(linkStatsAccessRecordReqDTO.getCurrent(), linkStatsAccessRecordReqDTO.getSize());
+        IPage<LinkAccessLogsDO> linkAccessLogsDOIPage = linkAccessLogsMapper.selectPage(page, queryWrapper);
         if (CollUtil.isEmpty(linkAccessLogsDOIPage.getRecords())) {
-            return new Page<>();
+            return new Page<>(linkStatsAccessRecordReqDTO.getCurrent(), linkStatsAccessRecordReqDTO.getSize());
         }
-        IPage<LinkStatsAccessRecordRespDTO> actualResult = linkAccessLogsDOIPage.convert(each -> {
-            LinkStatsAccessRecordRespDTO linkStatsAccessRecordRespDTO = BeanUtil.toBean(each, LinkStatsAccessRecordRespDTO.class);
+        IPage<LinkStatsAccessRecordVO> actualResult = linkAccessLogsDOIPage.convert(each -> {
+            LinkStatsAccessRecordVO linkStatsAccessRecordRespDTO = BeanUtil.toBean(each, LinkStatsAccessRecordVO.class);
             linkStatsAccessRecordRespDTO.setUvType(Boolean.TRUE.equals(each.getFirstFlag()) ? "新访客" : "老访客");
             return linkStatsAccessRecordRespDTO;
         });
@@ -261,7 +262,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     }
 
     @Override
-    public LinkStatsRespDTO groupShortLinkStats(GroupStatsReqDTO groupStatsReqDTO) {
+    public LinkStatsVO groupShortLinkStats(GroupStatsReqDTO groupStatsReqDTO) {
         groupOwnershipService.assertOwnedByCurrentUser(groupStatsReqDTO.getGid());
         List<LinkAccessStatsDO> listStatsByGroup = Optional.ofNullable(linkAccessStatsMapper.listStatsByGroup(groupStatsReqDTO))
                 .orElse(Collections.emptyList());
@@ -277,7 +278,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .sum();
 
         // 基础访问详情（即使 listStatsByGroup 为空也继续构造）
-        List<LinkStatsAccessDailyRespDTO> daily = new ArrayList<>();
+        List<LinkStatsAccessDailyVO> daily = new ArrayList<>();
         List<String> rangeDates = DateUtil.rangeToList(DateUtil.parse(groupStatsReqDTO.getStartDate()), DateUtil.parse(groupStatsReqDTO.getEndDate()), DateField.DAY_OF_MONTH).stream()
                 .map(DateUtil::formatDate)
                 .toList();
@@ -287,7 +288,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                         .filter(item -> Objects.equals(each, DateUtil.formatDate(item.getDate())))
                         .findFirst()
                         .ifPresentOrElse(item -> {
-                            LinkStatsAccessDailyRespDTO accessDailyRespDTO = LinkStatsAccessDailyRespDTO.builder()
+                            LinkStatsAccessDailyVO accessDailyRespDTO = LinkStatsAccessDailyVO.builder()
                                     .date(each)
                                     .pv(item.getPv())
                                     .uv(item.getUv())
@@ -295,7 +296,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                                     .build();
                             daily.add(accessDailyRespDTO);
                         }, () -> {
-                            LinkStatsAccessDailyRespDTO accessDailyRespDTO = LinkStatsAccessDailyRespDTO.builder()
+                            LinkStatsAccessDailyVO accessDailyRespDTO = LinkStatsAccessDailyVO.builder()
                                     .date(each)
                                     .pv(0)
                                     .uv(0)
@@ -305,7 +306,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                         });
             } else {
                 // listStatsByGroup 为空时，所有日期返回0
-                LinkStatsAccessDailyRespDTO accessDailyRespDTO = LinkStatsAccessDailyRespDTO.builder()
+                LinkStatsAccessDailyVO accessDailyRespDTO = LinkStatsAccessDailyVO.builder()
                         .date(each)
                         .pv(0)
                         .uv(0)
@@ -315,7 +316,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             }
         });
         // 地区访问详情（仅国内）
-        List<LinkStatsLocaleCNRespDTO> localeCnStats = new ArrayList<>();
+        List<LinkStatsLocaleCNVO> localeCnStats = new ArrayList<>();
         List<LinkLocaleStatsDO> listedLocaleByGroup = linkLocaleStatsMapper.listLocaleByGroup(groupStatsReqDTO);
         int localeCnSum = listedLocaleByGroup.stream()
                 .mapToInt(LinkLocaleStatsDO::getCnt)
@@ -323,7 +324,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         listedLocaleByGroup.forEach(each -> {
             double ratio = (double) each.getCnt() / localeCnSum;
             double actualRatio = Math.round(ratio * 100.0) / 100.0;
-            LinkStatsLocaleCNRespDTO localeCNRespDTO = LinkStatsLocaleCNRespDTO.builder()
+            LinkStatsLocaleCNVO localeCNRespDTO = LinkStatsLocaleCNVO.builder()
                     .cnt(each.getCnt())
                     .locale(each.getProvince())
                     .ratio(actualRatio)
@@ -345,10 +346,10 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             hourStats.add(hourCnt);
         }
         // 高频访问IP详情
-        List<LinkStatsTopIpRespDTO> topIpStats = new ArrayList<>();
+        List<LinkStatsTopIpVO> topIpStats = new ArrayList<>();
         List<HashMap<String, Object>> listTopIpByGroup = linkAccessLogsMapper.listTopIpByGroup(groupStatsReqDTO);
         listTopIpByGroup.forEach(each -> {
-            LinkStatsTopIpRespDTO statsTopIpRespDTO = LinkStatsTopIpRespDTO.builder()
+            LinkStatsTopIpVO statsTopIpRespDTO = LinkStatsTopIpVO.builder()
                     .ip(each.get("ip").toString())
                     .cnt(Integer.parseInt(each.get("count").toString()))
                     .build();
@@ -369,7 +370,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             weekdayStats.add(weekdayCnt);
         }
         // 浏览器访问详情
-        List<LinkStatsBrowserRespDTO> browserStats = new ArrayList<>();
+        List<LinkStatsBrowserVO> browserStats = new ArrayList<>();
         List<HashMap<String, Object>> listBrowserStatsByGroup = linkBrowserStatsMapper.listBrowserStatsByGroup(groupStatsReqDTO);
         int browserSum = listBrowserStatsByGroup.stream()
                 .mapToInt(each -> Integer.parseInt(each.get("count").toString()))
@@ -377,7 +378,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         listBrowserStatsByGroup.forEach(each -> {
             double ratio = (double) Integer.parseInt(each.get("count").toString()) / browserSum;
             double actualRatio = Math.round(ratio * 100.0) / 100.0;
-            LinkStatsBrowserRespDTO browserRespDTO = LinkStatsBrowserRespDTO.builder()
+            LinkStatsBrowserVO browserRespDTO = LinkStatsBrowserVO.builder()
                     .cnt(Integer.parseInt(each.get("count").toString()))
                     .browser(each.get("browser").toString())
                     .ratio(actualRatio)
@@ -385,7 +386,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             browserStats.add(browserRespDTO);
         });
         // 操作系统访问详情
-        List<LinkStatsOsRespDTO> osStats = new ArrayList<>();
+        List<LinkStatsOsVO> osStats = new ArrayList<>();
         List<HashMap<String, Object>> listOsStatsByGroup = linkOsStatsMapper.listOsStatsByGroup(groupStatsReqDTO);
         int osSum = listOsStatsByGroup.stream()
                 .mapToInt(each -> Integer.parseInt(each.get("count").toString()))
@@ -393,7 +394,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         listOsStatsByGroup.forEach(each -> {
             double ratio = (double) Integer.parseInt(each.get("count").toString()) / osSum;
             double actualRatio = Math.round(ratio * 100.0) / 100.0;
-            LinkStatsOsRespDTO osRespDTO = LinkStatsOsRespDTO.builder()
+            LinkStatsOsVO osRespDTO = LinkStatsOsVO.builder()
                     .cnt(Integer.parseInt(each.get("count").toString()))
                     .os(each.get("os").toString())
                     .ratio(actualRatio)
@@ -401,7 +402,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             osStats.add(osRespDTO);
         });
         // 访问设备类型详情
-        List<LinkStatsDeviceRespDTO> deviceStats = new ArrayList<>();
+        List<LinkStatsDeviceVO> deviceStats = new ArrayList<>();
         List<LinkDeviceStatsDO> listDeviceStatsByGroup = linkDeviceStatsMapper.listDeviceStatsByGroup(groupStatsReqDTO);
         int deviceSum = listDeviceStatsByGroup.stream()
                 .mapToInt(LinkDeviceStatsDO::getCnt)
@@ -409,7 +410,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         listDeviceStatsByGroup.forEach(each -> {
             double ratio = (double) each.getCnt() / deviceSum;
             double actualRatio = Math.round(ratio * 100.0) / 100.0;
-            LinkStatsDeviceRespDTO deviceRespDTO = LinkStatsDeviceRespDTO.builder()
+            LinkStatsDeviceVO deviceRespDTO = LinkStatsDeviceVO.builder()
                     .cnt(each.getCnt())
                     .device(each.getDevice())
                     .ratio(actualRatio)
@@ -417,7 +418,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             deviceStats.add(deviceRespDTO);
         });
         // 访问网络类型详情
-        List<LinkStatsNetworkRespDTO> networkStats = new ArrayList<>();
+        List<LinkStatsNetworkVO> networkStats = new ArrayList<>();
         List<LinkNetworkStatsDO> listNetworkStatsByGroup = linkNetworkStatsMapper.listNetworkStatsByGroup(groupStatsReqDTO);
         int networkSum = listNetworkStatsByGroup.stream()
                 .mapToInt(LinkNetworkStatsDO::getCnt)
@@ -425,7 +426,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         listNetworkStatsByGroup.forEach(each -> {
             double ratio = (double) each.getCnt() / networkSum;
             double actualRatio = Math.round(ratio * 100.0) / 100.0;
-            LinkStatsNetworkRespDTO networkRespDTO = LinkStatsNetworkRespDTO.builder()
+            LinkStatsNetworkVO networkRespDTO = LinkStatsNetworkVO.builder()
                     .cnt(each.getCnt())
                     .network(each.getNetwork())
                     .ratio(actualRatio)
@@ -433,7 +434,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             networkStats.add(networkRespDTO);
         });
         
-        return LinkStatsRespDTO.builder()
+        return LinkStatsVO.builder()
                 .pv(totalPv)
                 .uv(totalUv)
                 .uip(totalUip)
@@ -450,15 +451,16 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     }
 
     @Override
-    public IPage<LinkStatsAccessRecordRespDTO> groupShortLinkStatsAccessRecord(GroupStatsAccessRecordReqDTO groupStatsAccessRecordReqDTO) {
+    public IPage<LinkStatsAccessRecordVO> groupShortLinkStatsAccessRecord(GroupStatsAccessRecordReqDTO groupStatsAccessRecordReqDTO) {
         groupOwnershipService.assertOwnedByCurrentUser(groupStatsAccessRecordReqDTO.getGid());
-        IPage<LinkAccessLogsDO> linkAccessLogsDOIPage = linkAccessLogsMapper.selectGroupPage(groupStatsAccessRecordReqDTO);
+        Page<LinkAccessLogsDO> page = new Page<>(groupStatsAccessRecordReqDTO.getCurrent(), groupStatsAccessRecordReqDTO.getSize());
+        IPage<LinkAccessLogsDO> linkAccessLogsDOIPage = linkAccessLogsMapper.selectGroupPage(page, groupStatsAccessRecordReqDTO);
         if (CollUtil.isEmpty(linkAccessLogsDOIPage.getRecords())) {
-            return new Page<>();
+            return new Page<>(groupStatsAccessRecordReqDTO.getCurrent(), groupStatsAccessRecordReqDTO.getSize());
         }
-        IPage<LinkStatsAccessRecordRespDTO> actualResult = linkAccessLogsDOIPage
+        IPage<LinkStatsAccessRecordVO> actualResult = linkAccessLogsDOIPage
                 .convert(each -> {
-                    LinkStatsAccessRecordRespDTO linkStatsAccessRecordRespDTO = BeanUtil.toBean(each, LinkStatsAccessRecordRespDTO.class);
+                    LinkStatsAccessRecordVO linkStatsAccessRecordRespDTO = BeanUtil.toBean(each, LinkStatsAccessRecordVO.class);
                     linkStatsAccessRecordRespDTO.setUvType(Boolean.TRUE.equals(each.getFirstFlag()) ? "新访客" : "老访客");
                     return linkStatsAccessRecordRespDTO;
                 });

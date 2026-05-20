@@ -7,10 +7,10 @@ import dev.haotangyuan.shortlink.dto.req.LinkBatchCreateReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkCreateReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkPageReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkUpdateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.GroupLinkCountQueryRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkBatchCreateRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkCreateRespDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkPageRespDTO;
+import dev.haotangyuan.shortlink.vo.GroupLinkCountQueryVO;
+import dev.haotangyuan.shortlink.vo.LinkBatchCreateVO;
+import dev.haotangyuan.shortlink.vo.LinkCreateVO;
+import dev.haotangyuan.shortlink.vo.LinkPageVO;
 import dev.haotangyuan.shortlink.service.LinkService;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
@@ -40,7 +40,7 @@ public class LinkController {
      * @return Result
      */
     @PostMapping("/api/short-link/v1/create")
-    public Result<LinkCreateRespDTO> createLink(@RequestBody LinkCreateReqDTO linkCreateReqDTO) {
+    public Result<LinkCreateVO> createLink(@RequestBody LinkCreateReqDTO linkCreateReqDTO) {
         return Results.success(linkService.createLink(linkCreateReqDTO));
     }
 
@@ -48,7 +48,7 @@ public class LinkController {
      * 批量创建短链接
      */
     @PostMapping("/api/short-link/v1/create/batch")
-    public Result<LinkBatchCreateRespDTO> batchCreateShortLink(@RequestBody LinkBatchCreateReqDTO linkBatchCreateReqDTO) {
+    public Result<LinkBatchCreateVO> batchCreateShortLink(@RequestBody LinkBatchCreateReqDTO linkBatchCreateReqDTO) {
         return Results.success(linkService.batchCreateLink(linkBatchCreateReqDTO));
     }
 
@@ -66,19 +66,19 @@ public class LinkController {
     /**
      * 短链接分页查询
      * @param linkPageReqDTO 分页请求参数
-     * @return Result<IPage<LinkPageRespDTO>>
+     * @return Result<IPage<LinkPageVO>>
      */
     @GetMapping("/api/short-link/v1/page")
-    public Result<IPage<LinkPageRespDTO>> pageLink(LinkPageReqDTO linkPageReqDTO) {
+    public Result<IPage<LinkPageVO>> pageLink(LinkPageReqDTO linkPageReqDTO) {
         return Results.success(linkService.pageLink(linkPageReqDTO));
     }
 
     /**
      * 查询分组内短链接数量
-     * @return Result<List<GroupLinkCountQueryRespDTO>>
+     * @return Result<List<GroupLinkCountQueryVO>>
      */
     @GetMapping("/api/short-link/v1/count")
-    public Result<List<GroupLinkCountQueryRespDTO>> listGroupLinkCount(@RequestParam("requestParam") List<String> gidList) {
+    public Result<List<GroupLinkCountQueryVO>> listGroupLinkCount(@RequestParam("requestParam") List<String> gidList) {
         return Results.success(linkService.listGroupLinkCount(gidList));
     }
 }

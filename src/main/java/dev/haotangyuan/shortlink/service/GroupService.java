@@ -1,10 +1,8 @@
 package dev.haotangyuan.shortlink.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
-import dev.haotangyuan.shortlink.dao.entity.GroupDO;
 import dev.haotangyuan.shortlink.dto.req.GroupSortReqDTO;
 import dev.haotangyuan.shortlink.dto.req.GroupUpdateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.GroupRespDTO;
+import dev.haotangyuan.shortlink.vo.GroupVO;
 
 import java.util.List;
 
@@ -12,7 +10,7 @@ import java.util.List;
  * 短链接分组接口层
  * @author: haotangyuan
  */
-public interface GroupService extends IService<GroupDO> {
+public interface GroupService {
     /**
      * 新增短链接分组
      * @param groupName 短链接分组名
@@ -30,9 +28,9 @@ public interface GroupService extends IService<GroupDO> {
 
     /**
      * 查询短链接分组集合
-     * @return List<GroupRespDTO>
+     * @return List<GroupVO>
      */
-    List<GroupRespDTO> listGroup();
+    List<GroupVO> listGroup();
 
     /**
      * 修改短链接分组

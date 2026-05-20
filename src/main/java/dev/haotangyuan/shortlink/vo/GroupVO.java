@@ -1,4 +1,4 @@
-package dev.haotangyuan.shortlink.dto.resp;
+package dev.haotangyuan.shortlink.vo;
 
 import lombok.Data;
 
@@ -7,7 +7,7 @@ import lombok.Data;
  * @author: haotangyuan
  */
 @Data
-public class GroupRespDTO {
+public class GroupVO {
     /**
      * 分组标识
      */

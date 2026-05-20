@@ -1,4 +1,4 @@
-package dev.haotangyuan.shortlink.dto.resp;
+package dev.haotangyuan.shortlink.vo;
 
 import lombok.Builder;
 import lombok.Data;
@@ -10,7 +10,7 @@ import java.util.Date;
  */
 @Data
 @Builder
-public class TokenRespDTO {
+public class TokenVO {
 
     /**
      * token 脱敏

@@ -1,6 +1,7 @@
 package dev.haotangyuan.shortlink.common.biz.user;
 
 import com.alibaba.ttl.TransmittableThreadLocal;
+import dev.haotangyuan.shortlink.dto.biz.UserInfoDTO;
 
 /**
  * 用户上下文：仅保存 username

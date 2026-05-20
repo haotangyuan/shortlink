@@ -3,7 +3,7 @@ package dev.haotangyuan.shortlink.controller.admin;
 import dev.haotangyuan.shortlink.common.convention.result.Result;
 import dev.haotangyuan.shortlink.common.convention.result.Results;
 import dev.haotangyuan.shortlink.dto.req.TokenCreateReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.TokenRespDTO;
+import dev.haotangyuan.shortlink.vo.TokenVO;
 import dev.haotangyuan.shortlink.service.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -27,7 +27,7 @@ public class TokenAdminController {
 
     /** 列表（脱敏展示 token） */
     @GetMapping("/api/short-link/admin/v1/token")
-    public Result<List<TokenRespDTO>> listTokens() {
+    public Result<List<TokenVO>> listTokens() {
         return Results.success(tokenService.listTokens());
     }
 

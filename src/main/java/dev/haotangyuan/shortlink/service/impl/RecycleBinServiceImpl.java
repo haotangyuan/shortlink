@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import dev.haotangyuan.shortlink.common.biz.user.GroupOwnershipVerifier;
 import dev.haotangyuan.shortlink.dao.entity.LinkDO;
@@ -13,7 +14,7 @@ import dev.haotangyuan.shortlink.dto.req.RecycleBinLinkPageReqDTO;
 import dev.haotangyuan.shortlink.dto.req.RecycleBinRemoveReqDTO;
 import dev.haotangyuan.shortlink.dto.req.RecycleBinRestoreReqDTO;
 import dev.haotangyuan.shortlink.dto.req.RecycleBinSaveReqDTO;
-import dev.haotangyuan.shortlink.dto.resp.LinkPageRespDTO;
+import dev.haotangyuan.shortlink.vo.LinkPageVO;
 import dev.haotangyuan.shortlink.service.RecycleBinService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -51,16 +52,17 @@ public class RecycleBinServiceImpl extends ServiceImpl<LinkMapper, LinkDO> imple
     }
 
     @Override
-    public IPage<LinkPageRespDTO> pageRecycleBinLink(RecycleBinLinkPageReqDTO recycleBinLinkPageReqDTO) {
+    public IPage<LinkPageVO> pageRecycleBinLink(RecycleBinLinkPageReqDTO recycleBinLinkPageReqDTO) {
         groupOwnershipService.assertAllOwnedByCurrentUser(recycleBinLinkPageReqDTO.getGidList());
         LambdaQueryWrapper<LinkDO> queryWrapper = Wrappers.lambdaQuery(LinkDO.class)
                 .eq(LinkDO::getDelFlag, 0)
                 .in(LinkDO::getGid, recycleBinLinkPageReqDTO.getGidList())
                 .eq(LinkDO::getEnableStatus, 1)
                 .orderByDesc(LinkDO::getUpdateTime);
-        IPage<LinkDO> resultPage = baseMapper.selectPage(recycleBinLinkPageReqDTO, queryWrapper);
+        Page<LinkDO> page = new Page<>(recycleBinLinkPageReqDTO.getCurrent(), recycleBinLinkPageReqDTO.getSize());
+        IPage<LinkDO> resultPage = baseMapper.selectPage(page, queryWrapper);
         return resultPage.convert(each -> {
-            LinkPageRespDTO bean = BeanUtil.toBean(each, LinkPageRespDTO.class);
+            LinkPageVO bean = BeanUtil.toBean(each, LinkPageVO.class);
             bean.setDomain("http://" + bean.getDomain());
             return bean;
         });
