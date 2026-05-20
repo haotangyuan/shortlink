@@ -22,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 访问统计接口实现层
@@ -85,8 +84,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .mapToInt(LinkLocaleStatsDO::getCnt)
                 .sum();
         listedLocaleByShortLink.forEach(each -> {
-            double ratio = (double) each.getCnt() / localeCnSum;
-            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            double actualRatio = calculateRatio(each.getCnt(), localeCnSum);
             LinkStatsLocaleCNVO localeCNRespDTO = LinkStatsLocaleCNVO.builder()
                     .cnt(each.getCnt())
                     .locale(each.getProvince())
@@ -98,9 +96,9 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         List<Integer> hourStats = new ArrayList<>();
         List<LinkAccessStatsDO> listHourStatsByShortLink = linkAccessStatsMapper.listHourStatsByShortLink(linkStatsReqDTO);
         for (int i = 0; i < 24; i++) {
-            AtomicInteger hour = new AtomicInteger(i);
+            int h = i;
             int hourCnt = listHourStatsByShortLink.stream()
-                    .filter(each -> Objects.equals(each.getHour(), hour.get()))
+                    .filter(each -> Objects.equals(each.getHour(), h))
                     .findFirst()
                     .map(LinkAccessStatsDO::getPv)
                     .orElse(0);
@@ -120,9 +118,9 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         List<Integer> weekdayStats = new ArrayList<>();
         List<LinkAccessStatsDO> listWeekdayStatsByShortLink = linkAccessStatsMapper.listWeekdayStatsByShortLink(linkStatsReqDTO);
         for (int i = 1; i < 8; i++) {
-            AtomicInteger weekday = new AtomicInteger(i);
+            int wd = i;
             int weekdayCnt = listWeekdayStatsByShortLink.stream()
-                    .filter(each -> Objects.equals(each.getWeekday(), weekday.get()))
+                    .filter(each -> Objects.equals(each.getWeekday(), wd))
                     .findFirst()
                     .map(LinkAccessStatsDO::getPv)
                     .orElse(0);
@@ -135,10 +133,10 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .mapToInt(each -> Integer.parseInt(each.get("count").toString()))
                 .sum();
         listBrowserStatsByShortLink.forEach(each -> {
-            double ratio = (double) Integer.parseInt(each.get("count").toString()) / browserSum;
-            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            int cnt = Integer.parseInt(each.get("count").toString());
+            double actualRatio = calculateRatio(cnt, browserSum);
             LinkStatsBrowserVO browserRespDTO = LinkStatsBrowserVO.builder()
-                    .cnt(Integer.parseInt(each.get("count").toString()))
+                    .cnt(cnt)
                     .browser(each.get("browser").toString())
                     .ratio(actualRatio)
                     .build();
@@ -151,10 +149,10 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .mapToInt(each -> Integer.parseInt(each.get("count").toString()))
                 .sum();
         listOsStatsByShortLink.forEach(each -> {
-            double ratio = (double) Integer.parseInt(each.get("count").toString()) / osSum;
-            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            int cnt = Integer.parseInt(each.get("count").toString());
+            double actualRatio = calculateRatio(cnt, osSum);
             LinkStatsOsVO osRespDTO = LinkStatsOsVO.builder()
-                    .cnt(Integer.parseInt(each.get("count").toString()))
+                    .cnt(cnt)
                     .os(each.get("os").toString())
                     .ratio(actualRatio)
                     .build();
@@ -176,10 +174,8 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                         .orElse("0")
         );
         int uvSum = oldUserCnt + newUserCnt;
-        double oldRatio = (double) oldUserCnt / uvSum;
-        double actualOldRatio = Math.round(oldRatio * 100.0) / 100.0;
-        double newRatio = (double) newUserCnt / uvSum;
-        double actualNewRatio = Math.round(newRatio * 100.0) / 100.0;
+        double actualOldRatio = calculateRatio(oldUserCnt, uvSum);
+        double actualNewRatio = calculateRatio(newUserCnt, uvSum);
         LinkStatsUvVO newUvRespDTO = LinkStatsUvVO.builder()
                 .uvType("newUser")
                 .cnt(newUserCnt)
@@ -199,8 +195,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .mapToInt(LinkDeviceStatsDO::getCnt)
                 .sum();
         listDeviceStatsByShortLink.forEach(each -> {
-            double ratio = (double) each.getCnt() / deviceSum;
-            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            double actualRatio = calculateRatio(each.getCnt(), deviceSum);
             LinkStatsDeviceVO deviceRespDTO = LinkStatsDeviceVO.builder()
                     .cnt(each.getCnt())
                     .device(each.getDevice())
@@ -215,8 +210,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .mapToInt(LinkNetworkStatsDO::getCnt)
                 .sum();
         listNetworkStatsByShortLink.forEach(each -> {
-            double ratio = (double) each.getCnt() / networkSum;
-            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            double actualRatio = calculateRatio(each.getCnt(), networkSum);
             LinkStatsNetworkVO networkRespDTO = LinkStatsNetworkVO.builder()
                     .cnt(each.getCnt())
                     .network(each.getNetwork())
@@ -323,8 +317,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .mapToInt(LinkLocaleStatsDO::getCnt)
                 .sum();
         listedLocaleByGroup.forEach(each -> {
-            double ratio = (double) each.getCnt() / localeCnSum;
-            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            double actualRatio = calculateRatio(each.getCnt(), localeCnSum);
             LinkStatsLocaleCNVO localeCNRespDTO = LinkStatsLocaleCNVO.builder()
                     .cnt(each.getCnt())
                     .locale(each.getProvince())
@@ -338,9 +331,9 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 ? linkAccessStatsMapper.listHourStatsByGroup(groupStatsReqDTO)
                 : new ArrayList<>();
         for (int i = 0; i < 24; i++) {
-            AtomicInteger hour = new AtomicInteger(i);
+            int h = i;
             int hourCnt = listHourStatsByGroup.stream()
-                    .filter(each -> Objects.equals(each.getHour(), hour.get()))
+                    .filter(each -> Objects.equals(each.getHour(), h))
                     .findFirst()
                     .map(LinkAccessStatsDO::getPv)
                     .orElse(0);
@@ -362,9 +355,9 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 ? linkAccessStatsMapper.listWeekdayStatsByGroup(groupStatsReqDTO)
                 : new ArrayList<>();
         for (int i = 1; i < 8; i++) {
-            AtomicInteger weekday = new AtomicInteger(i);
+            int wd = i;
             int weekdayCnt = listWeekdayStatsByGroup.stream()
-                    .filter(each -> Objects.equals(each.getWeekday(), weekday.get()))
+                    .filter(each -> Objects.equals(each.getWeekday(), wd))
                     .findFirst()
                     .map(LinkAccessStatsDO::getPv)
                     .orElse(0);
@@ -377,10 +370,10 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .mapToInt(each -> Integer.parseInt(each.get("count").toString()))
                 .sum();
         listBrowserStatsByGroup.forEach(each -> {
-            double ratio = (double) Integer.parseInt(each.get("count").toString()) / browserSum;
-            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            int cnt = Integer.parseInt(each.get("count").toString());
+            double actualRatio = calculateRatio(cnt, browserSum);
             LinkStatsBrowserVO browserRespDTO = LinkStatsBrowserVO.builder()
-                    .cnt(Integer.parseInt(each.get("count").toString()))
+                    .cnt(cnt)
                     .browser(each.get("browser").toString())
                     .ratio(actualRatio)
                     .build();
@@ -393,10 +386,10 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .mapToInt(each -> Integer.parseInt(each.get("count").toString()))
                 .sum();
         listOsStatsByGroup.forEach(each -> {
-            double ratio = (double) Integer.parseInt(each.get("count").toString()) / osSum;
-            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            int cnt = Integer.parseInt(each.get("count").toString());
+            double actualRatio = calculateRatio(cnt, osSum);
             LinkStatsOsVO osRespDTO = LinkStatsOsVO.builder()
-                    .cnt(Integer.parseInt(each.get("count").toString()))
+                    .cnt(cnt)
                     .os(each.get("os").toString())
                     .ratio(actualRatio)
                     .build();
@@ -409,8 +402,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .mapToInt(LinkDeviceStatsDO::getCnt)
                 .sum();
         listDeviceStatsByGroup.forEach(each -> {
-            double ratio = (double) each.getCnt() / deviceSum;
-            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            double actualRatio = calculateRatio(each.getCnt(), deviceSum);
             LinkStatsDeviceVO deviceRespDTO = LinkStatsDeviceVO.builder()
                     .cnt(each.getCnt())
                     .device(each.getDevice())
@@ -425,8 +417,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                 .mapToInt(LinkNetworkStatsDO::getCnt)
                 .sum();
         listNetworkStatsByGroup.forEach(each -> {
-            double ratio = (double) each.getCnt() / networkSum;
-            double actualRatio = Math.round(ratio * 100.0) / 100.0;
+            double actualRatio = calculateRatio(each.getCnt(), networkSum);
             LinkStatsNetworkVO networkRespDTO = LinkStatsNetworkVO.builder()
                     .cnt(each.getCnt())
                     .network(each.getNetwork())
@@ -466,5 +457,12 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                     return linkStatsAccessRecordRespDTO;
                 });
         return actualResult;
+    }
+
+    private static double calculateRatio(int cnt, int sum) {
+        if (sum == 0) {
+            return 0.0;
+        }
+        return Math.round((double) cnt / sum * 100.0) / 100.0;
     }
 }

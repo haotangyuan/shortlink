@@ -27,8 +27,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.LOCK_GROUP_CREATE_KEY;
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.USER_GIDS_KEY;
@@ -83,16 +85,12 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
                 String key = String.format(USER_GIDS_KEY, username);
                 stringRedisTemplate.opsForSet().add(key, gid);
                 stringRedisTemplate.expire(key, 30, java.util.concurrent.TimeUnit.MINUTES);
-            } catch (Throwable t) {
-                log.error("Maintain user_gids on create error, username={}, gid={}", username, gid, t);
+            } catch (Exception e) {
+                log.error("Maintain user_gids on create error, username={}, gid={}", username, gid, e);
             }
         } finally {
             lock.unlock();
         }
-    }
-
-    private boolean hasGid(String gid) {
-        return hasGid(UserContext.getUsername(), gid);
     }
 
     private boolean hasGid(String username, String gid) {
@@ -126,8 +124,8 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
         try {
             String key = String.format(USER_GIDS_KEY, UserContext.getUsername());
             stringRedisTemplate.opsForSet().remove(key, gid);
-        } catch (Throwable t) {
-            log.error("Maintain user_gids on delete error, username={}, gid={}", UserContext.getUsername(), gid, t);
+        } catch (Exception e) {
+            log.error("Maintain user_gids on delete error, username={}, gid={}", UserContext.getUsername(), gid, e);
         }
     }
 
@@ -155,13 +153,13 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
         List<GroupLinkCountQueryVO> listResult = linkService
                 .listGroupLinkCount(groupDOList.stream().map(GroupDO::getGid).toList());
         List<GroupVO> groupRespDTOList = BeanUtil.copyToList(groupDOList, GroupVO.class);
+        Map<String, GroupLinkCountQueryVO> countMap = listResult.stream()
+                .collect(Collectors.toMap(GroupLinkCountQueryVO::getGid, Function.identity()));
         groupRespDTOList.forEach(each -> {
-            Optional<GroupLinkCountQueryVO> first = listResult.stream()
-                    .filter(item -> Objects.equals(item.getGid(), each.getGid()))
-                    .findFirst();
-            first.ifPresent(item -> {
-                each.setLinkCount(first.get().getLinkCount());
-            });
+            GroupLinkCountQueryVO count = countMap.get(each.getGid());
+            if (count != null) {
+                each.setLinkCount(count.getLinkCount());
+            }
         });
         return groupRespDTOList;
     }

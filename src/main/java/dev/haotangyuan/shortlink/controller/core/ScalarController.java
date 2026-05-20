@@ -2,7 +2,6 @@ package dev.haotangyuan.shortlink.controller.core;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;

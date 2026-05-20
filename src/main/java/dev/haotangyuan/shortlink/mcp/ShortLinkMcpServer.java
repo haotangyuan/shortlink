@@ -35,14 +35,10 @@ public class ShortLinkMcpServer {
     private static final String SSE_ENDPOINT = "/api/mcp";
     private static final String MESSAGE_ENDPOINT = "/api/mcp/message";
 
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
-    }
+    private final ObjectMapper objectMapper;
 
     @Bean
-    public WebMvcSseServerTransportProvider transportProvider(ObjectMapper objectMapper) {
-        // 使用 builder（替代已弃用构造函数），并开启 keepalive
+    public WebMvcSseServerTransportProvider transportProvider() {
         log.info("Creating MCP transport provider via builder. sse={}, message={}", SSE_ENDPOINT, MESSAGE_ENDPOINT);
         return WebMvcSseServerTransportProvider.builder()
                 .objectMapper(objectMapper)

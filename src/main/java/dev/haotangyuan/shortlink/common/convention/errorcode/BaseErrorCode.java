@@ -24,7 +24,7 @@ public enum BaseErrorCode implements IErrorCode {
     USER_TOKEN_FAIL("A000200", "用户身份验证失败"),
 
     // ========== 二级宏观错误码 系统请求缺少幂等Token ==========
-    IDEMPOTENT_TOKEN_NULL_ERROR("A000200", "幂等Token为空"),
+    IDEMPOTENT_TOKEN_NULL_ERROR("A000202", "幂等Token为空"),
     IDEMPOTENT_TOKEN_DELETE_ERROR("A000201", "幂等Token已被使用或失效"),
 
     // ========== 二级宏观错误码 系统请求操作频繁 ==========
@@ -41,9 +41,9 @@ public enum BaseErrorCode implements IErrorCode {
     // ========== 业务补充：用户相关 ==========
     // 保持与历史 UserErrorCodeEnum 一致，便于平滑迁移
     USER_NULL("B000200", "用户记录不存在"),
-    USER_NAME_EXIST("B00201", "用户名已存在"),
+    USER_NAME_EXIST("B000201", "用户名已存在"),
     USER_EXIST("B00202", "用户记录已存在"),
-    USER_SAVE_ERROR("B00202", "用户记录失败");
+    USER_SAVE_ERROR("B00203", "用户记录失败");
 
     private final String code;
 

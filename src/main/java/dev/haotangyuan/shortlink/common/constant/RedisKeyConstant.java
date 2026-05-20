@@ -72,12 +72,6 @@ public class RedisKeyConstant {
     public static final String SHORT_LINK_STATS_STREAM_GROUP_KEY = "short-link:stats-stream:only-group";
 
     /**
-     * GID 反向归属索引（旧方案，废弃）
-     * 格式：short-link:gid-owner:{gid} -> username
-     */
-    public static final String GID_OWNER_KEY = "short-link:gid-owner:%s";
-
-    /**
      * 用户 GID 正向索引集合
      * 格式：short-link:user-gids:{username} (Set of gid)
      */

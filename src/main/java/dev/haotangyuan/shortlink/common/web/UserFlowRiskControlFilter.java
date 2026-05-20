@@ -36,17 +36,21 @@ public class UserFlowRiskControlFilter implements Filter {
     private final UserFlowRiskControlConfiguration userFlowRiskControlConfiguration;
 
     private static final String USER_FLOW_RISK_CONTROL_LUA_SCRIPT_PATH = "lua/user_flow_risk_control.lua";
+    private static final DefaultRedisScript<Long> REDIS_SCRIPT;
+
+    static {
+        REDIS_SCRIPT = new DefaultRedisScript<>();
+        REDIS_SCRIPT.setScriptSource(new ResourceScriptSource(new ClassPathResource(USER_FLOW_RISK_CONTROL_LUA_SCRIPT_PATH)));
+        REDIS_SCRIPT.setResultType(Long.class);
+    }
 
     @SneakyThrows
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain) throws IOException, ServletException {
-        DefaultRedisScript<Long> redisScript = new DefaultRedisScript<>();
-        redisScript.setScriptSource(new ResourceScriptSource(new ClassPathResource(USER_FLOW_RISK_CONTROL_LUA_SCRIPT_PATH)));
-        redisScript.setResultType(Long.class);
         String username = Optional.ofNullable(UserContext.getUsername()).orElse(PUBLIC_USERNAME);
         Long result;
         try {
-            result = stringRedisTemplate.execute(redisScript, Lists.newArrayList(username), String.valueOf(userFlowRiskControlConfiguration.getTimeWindow()));
+            result = stringRedisTemplate.execute(REDIS_SCRIPT, Lists.newArrayList(username), String.valueOf(userFlowRiskControlConfiguration.getTimeWindow()));
         } catch (Throwable ex) {
             log.error("执行用户请求流量限制LUA脚本出错", ex);
             tooMany((HttpServletResponse) response);

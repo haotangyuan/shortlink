@@ -52,7 +52,7 @@ public class GroupAdminController {
      * @return
      */
     @PutMapping("/api/short-link/admin/v1/group")
-    public Result<Void> listGroup(@RequestBody GroupUpdateReqDTO groupUpdateReqDTO) {
+    public Result<Void> updateGroup(@RequestBody GroupUpdateReqDTO groupUpdateReqDTO) {
         groupService.updateGroup(groupUpdateReqDTO);
         return Results.success();
     }
@@ -64,7 +64,7 @@ public class GroupAdminController {
      * @return
      */
     @DeleteMapping("/api/short-link/admin/v1/group")
-    public Result<Void> listGroup(@RequestParam String gid) {
+    public Result<Void> deleteGroup(@RequestParam String gid) {
         groupService.deleteGroup(gid);
         return Results.success();
     }

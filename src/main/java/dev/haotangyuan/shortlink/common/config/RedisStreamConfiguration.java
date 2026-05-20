@@ -41,7 +41,7 @@ public class RedisStreamConfiguration {
     private final LinkStatsSaveConsumer linkStatsSaveConsumer;
 
     // 每 CPU ≈1.5 个消费者，向下取整，至少 1 个
-    private final int consumerCount = Math.max(1, (int) Math.floor(Runtime.getRuntime().availableProcessors() * 1.5));
+    private final int consumerCount = Math.max(1, (int) (Runtime.getRuntime().availableProcessors() * 1.5));
     private static final long THROUGHPUT_LOG_INTERVAL_MS = 300_000L;
     private final LongAdder consumeCounter = new LongAdder();
     private final AtomicLong lastThroughputLogTime = new AtomicLong(System.currentTimeMillis());

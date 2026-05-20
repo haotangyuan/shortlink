@@ -2,7 +2,6 @@ package dev.haotangyuan.shortlink.common.web;
 
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson2.JSON;
-import com.google.common.collect.Lists;
 import dev.haotangyuan.shortlink.common.biz.user.UserContext;
 import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
 import dev.haotangyuan.shortlink.common.convention.result.Results;
@@ -14,8 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.SESSION_KEY;
@@ -32,7 +31,7 @@ public class UserTransmitFilter implements Filter {
 
     private final StringRedisTemplate stringRedisTemplate;
 
-    private final List<String> IGNORE_URI = Lists.newArrayList(
+    private final Set<String> IGNORE_URI = Set.of(
             "/api/short-link/admin/v1/user/login",
             "/api/short-link/admin/v1/user/exists"
     );

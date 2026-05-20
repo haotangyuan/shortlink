@@ -1,5 +1,6 @@
 package dev.haotangyuan.shortlink.common.web;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.util.concurrent.RateLimiter;
 import dev.haotangyuan.shortlink.common.config.RateLimitProperties;
 import dev.haotangyuan.shortlink.common.convention.result.Results;
@@ -39,6 +40,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     @Qualifier("statsRateLimiter")
     private final RateLimiter statsRateLimiter;
     private final RateLimitProperties props;
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override
     protected boolean shouldNotFilterAsyncDispatch() {
@@ -122,7 +124,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         } else {
             resp.setContentType("application/json;charset=UTF-8");
             Object body = Results.failure("B100000", "当前流量较高，请稍后再试...");
-            resp.getWriter().write(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(body));
+            resp.getWriter().write(OBJECT_MAPPER.writeValueAsString(body));
         }
     }
 }

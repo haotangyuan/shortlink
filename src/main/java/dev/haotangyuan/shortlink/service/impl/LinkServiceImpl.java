@@ -39,6 +39,7 @@ import dev.haotangyuan.shortlink.toolkit.ShortCodeUtil;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
+import java.io.IOException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -438,32 +439,29 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         // 1. 优先查询本地 Caffeine 缓存
         String originalLink = redirectCache.getIfPresent(fullShortUrl);
         if (StrUtil.isNotBlank(originalLink)) {
-            linkStats(buildLinkStatsRecordAndSetUser(fullShortUrl, request, response));
-            ((HttpServletResponse) response).sendRedirect(originalLink);
+            doRedirect(originalLink, fullShortUrl, request, response);
             return;
         }
         // 2. 查询 Redis 缓存
         originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
         if (StrUtil.isNotBlank(originalLink)) {
-            // 回写本地缓存
             redirectCache.put(fullShortUrl, originalLink);
-            linkStats(buildLinkStatsRecordAndSetUser(fullShortUrl, request, response));
-            ((HttpServletResponse) response).sendRedirect(originalLink);
+            doRedirect(originalLink, fullShortUrl, request, response);
             return;
         }
         boolean contains = ShortCodeUtil.mightExist(shortUri);
         if (!contains) {
-            ((HttpServletResponse) response).sendRedirect("/page/notfound");
+            doNotFound(response);
             return;
         }
         contains = shortUriCreateCachePenetrationBloomFilter.contains(fullShortUrl);
         if (!contains) {
-            ((HttpServletResponse) response).sendRedirect("/page/notfound");
+            doNotFound(response);
             return;
         }
         String gotoIsNullShortLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl));
         if (StrUtil.isNotBlank(gotoIsNullShortLink)) {
-            ((HttpServletResponse) response).sendRedirect("/page/notfound");
+            doNotFound(response);
             return;
         }
         // 本地每键互斥：使用 Caffeine 管理 ReentrantLock，避免跳转路径使用分布式锁导致尾延迟放大
@@ -473,22 +471,19 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             // 双重检查：先查本地缓存
             originalLink = redirectCache.getIfPresent(fullShortUrl);
             if (StrUtil.isNotBlank(originalLink)) {
-                linkStats(buildLinkStatsRecordAndSetUser(fullShortUrl, request, response));
-                ((HttpServletResponse) response).sendRedirect(originalLink);
+                doRedirect(originalLink, fullShortUrl, request, response);
                 return;
             }
             // 双重检查：再查 Redis
             originalLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_SHORT_LINK_KEY, fullShortUrl));
             if (StrUtil.isNotBlank(originalLink)) {
-                // 回写本地缓存
                 redirectCache.put(fullShortUrl, originalLink);
-                linkStats(buildLinkStatsRecordAndSetUser(fullShortUrl, request, response));
-                ((HttpServletResponse) response).sendRedirect(originalLink);
+                doRedirect(originalLink, fullShortUrl, request, response);
                 return;
             }
             gotoIsNullShortLink = stringRedisTemplate.opsForValue().get(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl));
             if (StrUtil.isNotBlank(gotoIsNullShortLink)) {
-                ((HttpServletResponse) response).sendRedirect("/page/notfound");
+                doNotFound(response);
                 return;
             }
             LambdaQueryWrapper<LinkGotoDO> linkGotoQueryWrapper = Wrappers.lambdaQuery(LinkGotoDO.class)
@@ -496,7 +491,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             LinkGotoDO linkGotoDO = linkGotoMapper.selectOne(linkGotoQueryWrapper);
             if (linkGotoDO == null) {
                 stringRedisTemplate.opsForValue().set(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl), "-", 30, TimeUnit.MINUTES);
-                ((HttpServletResponse) response).sendRedirect("/page/notfound");
+                doNotFound(response);
                 return;
             }
             LambdaQueryWrapper<LinkDO> queryWrapper = Wrappers.lambdaQuery(LinkDO.class)
@@ -507,7 +502,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             LinkDO linkDO = baseMapper.selectOne(queryWrapper);
             if (linkDO == null || (linkDO.getValidDate() != null && linkDO.getValidDate().before(new Date()))) {
                 stringRedisTemplate.opsForValue().set(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl), "-", 30, TimeUnit.MINUTES);
-                ((HttpServletResponse) response).sendRedirect("/page/notfound");
+                doNotFound(response);
                 return;
             }
             stringRedisTemplate.opsForValue().set(
@@ -515,10 +510,8 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                     linkDO.getOriginUrl(),
                     LinkUtil.getLinkCacheValidTime(linkDO.getValidDate()), TimeUnit.MILLISECONDS
             );
-            // 同时写入本地缓存
             redirectCache.put(fullShortUrl, linkDO.getOriginUrl());
-            linkStats(buildLinkStatsRecordAndSetUser(fullShortUrl, request, response));
-            ((HttpServletResponse) response).sendRedirect(linkDO.getOriginUrl());
+            doRedirect(linkDO.getOriginUrl(), fullShortUrl, request, response);
         } finally {
             lock.unlock();
         }
@@ -541,7 +534,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                         .describe(describes.get(i))
                         .build();
                 result.add(linkBaseInfoRespDTO);
-            } catch (Throwable ex) {
+            } catch (Exception ex) {
                 log.error("批量创建短链接失败，原始参数：{}", originUrls.get(i));
             }
         }
@@ -606,5 +599,14 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         if (!details.contains(domain)) {
             throw new ClientException("演示环境为避免恶意攻击，请生成以下网站跳转链接：" + gotoDomainWhiteListConfiguration.getNames());
         }
+    }
+
+    private void doRedirect(String targetUrl, String fullShortUrl, ServletRequest request, ServletResponse response) throws IOException {
+        linkStats(buildLinkStatsRecordAndSetUser(fullShortUrl, request, response));
+        ((HttpServletResponse) response).sendRedirect(targetUrl);
+    }
+
+    private void doNotFound(ServletResponse response) throws IOException {
+        ((HttpServletResponse) response).sendRedirect("/page/notfound");
     }
 }

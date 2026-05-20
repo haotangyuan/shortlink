@@ -83,7 +83,7 @@ public class LinkController {
      * @return Result<List<GroupLinkCountQueryVO>>
      */
     @GetMapping("/api/short-link/v1/count")
-    public Result<List<GroupLinkCountQueryVO>> listGroupLinkCount(@RequestParam("requestParam") List<String> gidList) {
+    public Result<List<GroupLinkCountQueryVO>> listGroupLinkCount(@RequestParam("gidList") List<String> gidList) {
         return Results.success(linkService.listGroupLinkCount(gidList));
     }
 }

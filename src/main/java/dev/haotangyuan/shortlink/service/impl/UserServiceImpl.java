@@ -61,6 +61,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
     private final GroupMapper groupMapper;
 
     private static final String USER_GIDS_REFRESH_LUA_SCRIPT_PATH = "lua/user_gids_refresh.lua";
+    private static final DefaultRedisScript<Long> USER_GIDS_REFRESH_SCRIPT;
+
+    static {
+        USER_GIDS_REFRESH_SCRIPT = new DefaultRedisScript<>();
+        USER_GIDS_REFRESH_SCRIPT.setResultType(Long.class);
+        USER_GIDS_REFRESH_SCRIPT.setScriptSource(new ResourceScriptSource(new ClassPathResource(USER_GIDS_REFRESH_LUA_SCRIPT_PATH)));
+    }
 
     @Override
     public UserVO getByUsername(String username) {
@@ -175,17 +182,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
                 stringRedisTemplate.expire(setKey, 30, TimeUnit.MINUTES);
                 return;
             }
-            // 使用 Lua（资源文件）一次性重建集合并设置 TTL（原子性更好）
-            DefaultRedisScript<Long> script = new DefaultRedisScript<>();
-            script.setResultType(Long.class);
-            script.setScriptSource(new ResourceScriptSource(new ClassPathResource(USER_GIDS_REFRESH_LUA_SCRIPT_PATH)));
             List<String> keys = Collections.singletonList(setKey);
             List<Object> args = new ArrayList<>();
-            args.add(String.valueOf(30 * 60)); // TTL 秒，转为字符串
+            args.add(String.valueOf(30 * 60));
             for (GroupDO groupDO : groups) {
                 args.add(groupDO.getGid());
             }
-            stringRedisTemplate.execute(script, keys, args.toArray());
+            stringRedisTemplate.execute(USER_GIDS_REFRESH_SCRIPT, keys, args.toArray());
         } catch (Throwable t) {
             // 可按需记录日志
             log.error("Refresh user_gids index error, username={}", username, t);

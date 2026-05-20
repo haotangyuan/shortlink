@@ -151,23 +151,6 @@ public class LinkUtil {
         }
     }
 
-    /**
-     * 获取网络类型
-     *
-     * @param geoInfo GeoInfo 对象
-     * @return 网络类型
-     */
-    public static String getNetwork(GeoInfo geoInfo) {
-        if (geoInfo == null) {
-            return "Unknown";
-        }
-        String isp = geoInfo.getIsp();
-        if (isp == null) {
-            return "Unknown";
-        }
-        return isp;
-    }
-
     public static String extractDomain(String url) {
         if (StrUtil.isBlank(url)) return null;
         String u = url.trim();

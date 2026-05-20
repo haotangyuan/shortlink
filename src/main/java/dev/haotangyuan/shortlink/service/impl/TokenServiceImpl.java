@@ -104,8 +104,8 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
             baseMapper.updateById(token);
             try {
                 stringRedisTemplate.delete(String.format(API_TOKEN_HASH_KEY, token.getTokenHash()));
-            } catch (Throwable t) {
-                log.error("Delete api-token mapping error", t);
+            } catch (Exception e) {
+                log.error("Delete api-token mapping error", e);
             }
         }
     }
@@ -120,8 +120,10 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
                 if (ttl <= 0) throw new ClientException("令牌过期时间无效");
                 stringRedisTemplate.opsForValue().set(key, username, ttl, TimeUnit.MILLISECONDS);
             }
-        } catch (Throwable t) {
-            log.error("Write api-token mapping error", t);
+        } catch (ClientException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Write api-token mapping error", e);
             throw new ClientException("令牌写入失败");
         }
     }

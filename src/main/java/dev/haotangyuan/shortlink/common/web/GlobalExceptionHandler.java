@@ -7,9 +7,7 @@ import dev.haotangyuan.shortlink.common.convention.exception.AbstractException;
 import dev.haotangyuan.shortlink.common.convention.result.Result;
 import dev.haotangyuan.shortlink.common.convention.result.Results;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
@@ -24,7 +22,6 @@ import java.util.Optional;
  *
  * @author: haotangyuan
  */
-@Component
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -32,7 +29,6 @@ public class GlobalExceptionHandler {
     /**
      * 拦截参数验证异常
      */
-    @SneakyThrows
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
     public Result validExceptionHandler(HttpServletRequest request, MethodArgumentNotValidException ex) {
         BindingResult bindingResult = ex.getBindingResult();
