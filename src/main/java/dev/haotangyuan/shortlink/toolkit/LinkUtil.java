@@ -27,6 +27,7 @@ import static dev.haotangyuan.shortlink.common.constant.LinkConstant.DEFAULT_CAC
 
 /**
  * 短链接工具类
+ *
  * @author: haotangyuan
  */
 @RequiredArgsConstructor
@@ -37,6 +38,7 @@ public class LinkUtil {
 
     /**
      * 获取短链接缓存有效时间
+     *
      * @param validDate 有效期时间
      * @return 缓存有效时间，单位：ms
      */
@@ -48,6 +50,7 @@ public class LinkUtil {
 
     /**
      * 获取实际访问IP
+     *
      * @param request HttpServletResponse对象
      * @return 实际访问IP
      */
@@ -78,6 +81,7 @@ public class LinkUtil {
 
     /**
      * 获取操作系统
+     *
      * @param request HttpServletResponse对象
      * @return 操作系统
      */
@@ -103,6 +107,7 @@ public class LinkUtil {
 
     /**
      * 获取浏览器
+     *
      * @param request HttpServletResponse对象
      * @return 浏览器
      */
@@ -130,6 +135,7 @@ public class LinkUtil {
 
     /**
      * 获取设备类型
+     *
      * @param request HttpServletResponse对象
      * @return 设备类型
      */
@@ -147,6 +153,7 @@ public class LinkUtil {
 
     /**
      * 获取网络类型
+     *
      * @param geoInfo GeoInfo 对象
      * @return 网络类型
      */
@@ -172,7 +179,10 @@ public class LinkUtil {
 
         host = host.toLowerCase(Locale.ROOT);
         if (host.endsWith(".")) host = host.substring(0, host.length() - 1);
-        try { host = IDN.toASCII(host); } catch (Exception ignore) {}
+        try {
+            host = IDN.toASCII(host);
+        } catch (Exception ignore) {
+        }
 
         // IP / localhost 直接忽略
         if ("localhost".equals(host) || host.matches("^\\d+\\.\\d+\\.\\d+\\.\\d+$") || host.contains(":")) return null;
@@ -182,7 +192,8 @@ public class LinkUtil {
             if (idn.isUnderPublicSuffix() || idn.isTopPrivateDomain()) {
                 return idn.topPrivateDomain().toString(); // eTLD+1
             }
-        } catch (IllegalArgumentException ignore) {}
+        } catch (IllegalArgumentException ignore) {
+        }
         return null;
     }
 
@@ -244,7 +255,8 @@ public class LinkUtil {
                     }
                     html = sb.toString();
                 }
-            } catch (Exception ignore) {}
+            } catch (Exception ignore) {
+            }
 
             // 解析 <link rel="icon" ...>
             if (StrUtil.isNotBlank(html)) {
@@ -277,8 +289,10 @@ public class LinkUtil {
                 if (code >= 200 && code < 300 && ct != null && ct.toLowerCase().startsWith("image")) {
                     return fallback;
                 }
-            } catch (Exception ignore) {}
-        } catch (Exception ignore) {}
+            } catch (Exception ignore) {
+            }
+        } catch (Exception ignore) {
+        }
 
         return null;
     }
@@ -288,6 +302,7 @@ public class LinkUtil {
      */
     private static class WhitelistFavicons {
         private static final java.util.Map<String, String> MAP = new java.util.HashMap<>();
+
         static {
             MAP.put("chanler.dev", "https://chanler.dev/favicon.ico");
             MAP.put("zhihu.com", "https://www.zhihu.com/favicon.ico");
@@ -303,6 +318,9 @@ public class LinkUtil {
             MAP.put("douban.com", "https://www.douban.com/favicon.ico");
             MAP.put("jianshu.com", "https://www.jianshu.com/favicon.ico");
         }
-        static String get(String domain) { return MAP.get(domain.toLowerCase(Locale.ROOT)); }
+
+        static String get(String domain) {
+            return MAP.get(domain.toLowerCase(Locale.ROOT));
+        }
     }
 }

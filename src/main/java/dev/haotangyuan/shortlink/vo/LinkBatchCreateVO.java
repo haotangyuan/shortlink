@@ -9,6 +9,7 @@ import java.util.List;
 
 /**
  * 短链接批量创建响应对象
+ *
  * @author: haotangyuan
  */
 @Data

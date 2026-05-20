@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * IP 地理位置查询配置
+ *
  * @author: haotangyuan
  */
 @Data
@@ -26,6 +27,15 @@ public class IpGeoProps {
      */
     private Amap amap = new Amap();
 
-    @Data public static class Local { private String dbPath; }
-    @Data public static class Amap { private String key; private String endpoint; private int timeout;}
+    @Data
+    public static class Local {
+        private String dbPath;
+    }
+
+    @Data
+    public static class Amap {
+        private String key;
+        private String endpoint;
+        private int timeout;
+    }
 }

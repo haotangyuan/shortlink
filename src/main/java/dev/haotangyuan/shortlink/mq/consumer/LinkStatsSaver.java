@@ -101,7 +101,7 @@ public class LinkStatsSaver {
         Date statsDate = Date.from(localDate.atStartOfDay(zoneId).toInstant());
 
         // 计算 v = epochDay(Asia/Shanghai) % 2（基于事件时间）
-        int v = (int)(localDate.toEpochDay() % 2);
+        int v = (int) (localDate.toEpochDay() % 2);
 
         // 使用新的 {v} 风格键
         String uvKey = String.format(STATS_UV_HLL_KEY, v, fullShortUrl);
@@ -114,17 +114,17 @@ public class LinkStatsSaver {
 
         // 计算 UV delta
         Long uvDelta = stringRedisTemplate.execute(hllCountAddDeltaScript,
-            Arrays.asList(uvKey, uvActiveKey),
-            statsRecord.getUv(),
-            fullShortUrl,
-            String.valueOf(ttlSeconds));
+                Arrays.asList(uvKey, uvActiveKey),
+                statsRecord.getUv(),
+                fullShortUrl,
+                String.valueOf(ttlSeconds));
 
         // 计算 UIP delta
         Long uipDelta = stringRedisTemplate.execute(hllCountAddDeltaScript,
-            Arrays.asList(uipKey, uipActiveKey),
-            statsRecord.getUip(),
-            fullShortUrl,
-            String.valueOf(ttlSeconds));
+                Arrays.asList(uipKey, uipActiveKey),
+                statsRecord.getUip(),
+                fullShortUrl,
+                String.valueOf(ttlSeconds));
 
         // 查询 IP 地理位置
         GeoInfo geoInfo = ipGeoClient.query(statsRecord.getUip());
@@ -244,7 +244,7 @@ public class LinkStatsSaver {
         rLock.lock();
         try {
             LinkGotoDO linkGotoDO = linkGotoMapper.selectOne(
-                Wrappers.lambdaQuery(LinkGotoDO.class).eq(LinkGotoDO::getFullShortUrl, fullShortUrl));
+                    Wrappers.lambdaQuery(LinkGotoDO.class).eq(LinkGotoDO::getFullShortUrl, fullShortUrl));
             if (linkGotoDO == null) {
                 log.warn("Link not found: {}", fullShortUrl);
                 return;

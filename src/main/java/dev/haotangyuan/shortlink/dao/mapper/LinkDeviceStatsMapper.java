@@ -12,12 +12,14 @@ import java.util.List;
 
 /**
  * 访问设备统计持久层
+ *
  * @author: haotangyuan
  */
 public interface LinkDeviceStatsMapper extends BaseMapper<LinkDeviceStatsDO> {
 
     /**
      * 记录访问设备监控数据
+     *
      * @param linkDeviceStatsDO 访问设备统计实体
      */
     @Insert("""
@@ -38,6 +40,7 @@ public interface LinkDeviceStatsMapper extends BaseMapper<LinkDeviceStatsDO> {
 
     /**
      * 根据短链接获取指定日期内访问设备监控数据
+     *
      * @param linkStatsReqDTO 查询参数
      * @return 访问设备统计列表
      */
@@ -59,6 +62,7 @@ public interface LinkDeviceStatsMapper extends BaseMapper<LinkDeviceStatsDO> {
 
     /**
      * 根据分组获取指定日期内访问设备监控数据
+     *
      * @param groupStatsReqDTO 查询参数
      * @return 访问设备统计列表
      */

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * URL 标题控制层
+ *
  * @author: haotangyuan
  */
 @RestController
@@ -20,6 +21,7 @@ public class UrlTitleController {
 
     /**
      * 根据 URL 获取标题
+     *
      * @param url URL
      * @return Result<String>
      */

@@ -21,12 +21,12 @@ import java.util.Date;
 public class TokenDO extends BaseDO {
 
     /**
-     *  id
+     * id
      */
     private Long id;
 
     /**
-     *  用户名
+     * 用户名
      */
     private String username;
 

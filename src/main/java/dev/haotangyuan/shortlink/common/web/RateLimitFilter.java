@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 
 /**
  * 短链接系统限流过滤器
+ *
  * @author: haotangyuan
  */
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -95,28 +96,28 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return SHORT_URI_PATH.matcher(path).matches();
     }
 
-    private void tooMany( HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    private void tooMany(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         resp.setStatus(429);
         if (isRedirectPath(req)) {
             resp.setContentType("text/html;charset=UTF-8");
             String src = URLEncoder.encode(req.getRequestURI() + (req.getQueryString() != null ? "?" + req.getQueryString() : ""), StandardCharsets.UTF_8);
             resp.getWriter().write(String.format("""
-            <!doctype html><meta charset="utf-8">
-            <title>Too Many Requests</title>
-            <meta name="robots" content="noindex,nofollow">
-            <style>body{font-family:system-ui;margin:6vh auto;max-width:600px;padding:0 16px;line-height:1.6}button{padding:.6em 1em;border:0;border-radius:10px;cursor:pointer}</style>
-            <h1>访问太频繁</h1>
-            <p>当前访问人数较多，请稍后再试。</p>
-            <p>
-              <button id="retry">立即重试</button>
-              <button id="copy">复制短链</button>
-            </p>
-            <script>
-              const src = decodeURIComponent('%s');
-              document.getElementById('retry').onclick = () => location.href = src;
-              document.getElementById('copy').onclick = async () => { try { await navigator.clipboard.writeText(location.origin + src); alert('已复制'); } catch(e){ alert('复制失败'); } }
-            </script>
-            """, src)
+                    <!doctype html><meta charset="utf-8">
+                    <title>Too Many Requests</title>
+                    <meta name="robots" content="noindex,nofollow">
+                    <style>body{font-family:system-ui;margin:6vh auto;max-width:600px;padding:0 16px;line-height:1.6}button{padding:.6em 1em;border:0;border-radius:10px;cursor:pointer}</style>
+                    <h1>访问太频繁</h1>
+                    <p>当前访问人数较多，请稍后再试。</p>
+                    <p>
+                      <button id="retry">立即重试</button>
+                      <button id="copy">复制短链</button>
+                    </p>
+                    <script>
+                      const src = decodeURIComponent('%s');
+                      document.getElementById('retry').onclick = () => location.href = src;
+                      document.getElementById('copy').onclick = async () => { try { await navigator.clipboard.writeText(location.origin + src); alert('已复制'); } catch(e){ alert('复制失败'); } }
+                    </script>
+                    """, src)
             );
         } else {
             resp.setContentType("application/json;charset=UTF-8");

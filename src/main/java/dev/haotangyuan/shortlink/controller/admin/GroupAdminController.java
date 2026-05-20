@@ -14,6 +14,7 @@ import java.util.List;
 
 /**
  * 短链接分组控制层
+ *
  * @author: haotangyuan
  */
 @RestController
@@ -24,6 +25,7 @@ public class GroupAdminController {
 
     /**
      * 创建短链接分组分组
+     *
      * @param groupSaveReqDTO
      * @return
      */
@@ -35,6 +37,7 @@ public class GroupAdminController {
 
     /**
      * 查询短链接分组列表
+     *
      * @return
      */
     @GetMapping("/api/short-link/admin/v1/group")
@@ -44,6 +47,7 @@ public class GroupAdminController {
 
     /**
      * 修改短链接分组名称
+     *
      * @param groupUpdateReqDTO
      * @return
      */
@@ -55,6 +59,7 @@ public class GroupAdminController {
 
     /**
      * 删除短链接分组名称
+     *
      * @param gid
      * @return
      */
@@ -66,6 +71,7 @@ public class GroupAdminController {
 
     /**
      * 删除短链接分组名称
+     *
      * @param groupSortReqDTOs
      * @return
      */

@@ -35,6 +35,7 @@ import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.USER_GI
 
 /**
  * 短链接分组接口实现层
+ *
  * @author: haotangyuan
  */
 @Slf4j
@@ -158,7 +159,9 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
             Optional<GroupLinkCountQueryVO> first = listResult.stream()
                     .filter(item -> Objects.equals(item.getGid(), each.getGid()))
                     .findFirst();
-            first.ifPresent(item -> {each.setLinkCount(first.get().getLinkCount());});
+            first.ifPresent(item -> {
+                each.setLinkCount(first.get().getLinkCount());
+            });
         });
         return groupRespDTOList;
     }

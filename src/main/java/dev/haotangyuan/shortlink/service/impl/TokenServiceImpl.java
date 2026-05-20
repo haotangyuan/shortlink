@@ -74,7 +74,9 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
             throw new ClientException("令牌不存在");
         }
         // 删除 Redis 映射（按哈希键）
-        try { stringRedisTemplate.delete(String.format(API_TOKEN_HASH_KEY, token.getTokenHash())); } catch (Throwable t) {
+        try {
+            stringRedisTemplate.delete(String.format(API_TOKEN_HASH_KEY, token.getTokenHash()));
+        } catch (Throwable t) {
             log.error("Delete api-token mapping error", t);
         }
         // 逻辑删除
@@ -100,7 +102,9 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
         } else {
             token.setEnableStatus(1);
             baseMapper.updateById(token);
-            try { stringRedisTemplate.delete(String.format(API_TOKEN_HASH_KEY, token.getTokenHash())); } catch (Throwable t) {
+            try {
+                stringRedisTemplate.delete(String.format(API_TOKEN_HASH_KEY, token.getTokenHash()));
+            } catch (Throwable t) {
                 log.error("Delete api-token mapping error", t);
             }
         }

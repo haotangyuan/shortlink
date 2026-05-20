@@ -6,6 +6,7 @@ import lombok.Data;
 
 /**
  * 用户返回参数响应
+ *
  * @author: haotangyuan
  */
 @Data

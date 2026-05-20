@@ -13,12 +13,14 @@ import java.util.List;
 
 /**
  * 操作系统访问统计持久层
+ *
  * @author: haotangyuan
  */
 public interface LinkOsStatsMapper extends BaseMapper<LinkOsStatsDO> {
 
     /**
      * 记录地区访问监控数据
+     *
      * @param linkOsStatsDO 操作系统统计实体
      */
     @Insert("""
@@ -39,6 +41,7 @@ public interface LinkOsStatsMapper extends BaseMapper<LinkOsStatsDO> {
 
     /**
      * 根据短链接获取指定日期内操作系统监控数据
+     *
      * @param linkStatsReqDTO 查询参数
      * @return 操作系统访问统计列表
      */
@@ -60,6 +63,7 @@ public interface LinkOsStatsMapper extends BaseMapper<LinkOsStatsDO> {
 
     /**
      * 根据分组获取指定日期内操作系统监控数据
+     *
      * @param groupStatsReqDTO 查询参数
      * @return 操作系统访问统计列表
      */

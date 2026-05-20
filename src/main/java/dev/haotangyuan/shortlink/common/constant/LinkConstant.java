@@ -2,6 +2,7 @@ package dev.haotangyuan.shortlink.common.constant;
 
 /**
  * 短链接常量类
+ *
  * @author: haotangyuan
  */
 public class LinkConstant {

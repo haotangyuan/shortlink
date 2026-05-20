@@ -9,6 +9,7 @@ import java.util.Date;
 
 /**
  * 短链接统计实体
+ *
  * @author: haotangyuan
  */
 @Data

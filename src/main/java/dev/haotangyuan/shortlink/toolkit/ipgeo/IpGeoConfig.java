@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * IP 地理位置查询配置
+ *
  * @author: haotangyuan
  */
 @Configuration

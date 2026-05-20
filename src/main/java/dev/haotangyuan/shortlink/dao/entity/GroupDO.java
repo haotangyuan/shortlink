@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 分组实体
+ *
  * @author: haotangyuan
  */
 @Data

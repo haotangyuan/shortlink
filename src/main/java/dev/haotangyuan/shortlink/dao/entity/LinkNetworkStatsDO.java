@@ -11,6 +11,7 @@ import java.util.Date;
 
 /**
  * 访问网络统计访问实体
+ *
  * @author: haotangyuan
  */
 @Data

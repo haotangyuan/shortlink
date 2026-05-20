@@ -22,6 +22,7 @@ import static dev.haotangyuan.shortlink.common.convention.errorcode.BaseErrorCod
  * Core API Token 鉴权过滤器：拦截 /api/short-link/v1/*
  * 校验 Authorization: Bearer {token}，通过 TokenService 解析 username
  * 仅设置 UserContext 的 username 字段
+ *
  * @author: haotangyuan
  */
 @RequiredArgsConstructor

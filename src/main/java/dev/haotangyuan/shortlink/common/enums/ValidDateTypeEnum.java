@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 
 /**
  * 有效期类型
+ *
  * @author: haotangyuan
  */
 @RequiredArgsConstructor

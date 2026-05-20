@@ -19,6 +19,7 @@ import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.*;
 
 /**
  * 短链接监控状态保存消息队列消费者
+ *
  * @author: haotangyuan
  */
 @Slf4j
@@ -41,9 +42,9 @@ public class LinkStatsSaveConsumer implements StreamListener<String, MapRecord<S
                 // 已完成，补偿 ACK
                 try {
                     stringRedisTemplate.opsForStream().acknowledge(
-                        SHORT_LINK_STATS_STREAM_TOPIC_KEY,
-                        SHORT_LINK_STATS_STREAM_GROUP_KEY,
-                        id
+                            SHORT_LINK_STATS_STREAM_TOPIC_KEY,
+                            SHORT_LINK_STATS_STREAM_GROUP_KEY,
+                            id
                     );
                 } catch (Exception e) {
                     log.warn("补偿 ACK 失败: {}", id, e);
@@ -79,9 +80,9 @@ public class LinkStatsSaveConsumer implements StreamListener<String, MapRecord<S
 
         try {
             stringRedisTemplate.opsForStream().acknowledge(
-                SHORT_LINK_STATS_STREAM_TOPIC_KEY,
-                SHORT_LINK_STATS_STREAM_GROUP_KEY,
-                id
+                    SHORT_LINK_STATS_STREAM_TOPIC_KEY,
+                    SHORT_LINK_STATS_STREAM_GROUP_KEY,
+                    id
             );
         } catch (Exception e) {
             log.error("ACK 失败，但业务已成功且已标记，PEL 巡检会补偿: {}", id, e);

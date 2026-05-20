@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 短链接高频访问 IP 监控响应参数
+ *
  * @author: haotangyuan
  */
 @Data

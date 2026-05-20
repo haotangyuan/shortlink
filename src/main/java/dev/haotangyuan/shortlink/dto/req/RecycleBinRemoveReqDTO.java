@@ -4,6 +4,7 @@ import lombok.Data;
 
 /**
  * 回收站移除请求参数
+ *
  * @author: haotangyuan
  */
 @Data

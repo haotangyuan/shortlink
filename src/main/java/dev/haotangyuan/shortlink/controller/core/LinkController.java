@@ -21,6 +21,7 @@ import java.util.List;
 
 /**
  * 短链接控制层
+ *
  * @author: haotangyuan
  */
 @RestController
@@ -37,6 +38,7 @@ public class LinkController {
 
     /**
      * 创建短链接
+     *
      * @return Result
      */
     @PostMapping("/api/short-link/v1/create")
@@ -54,6 +56,7 @@ public class LinkController {
 
     /**
      * 修改短链接
+     *
      * @param linkUpdateReqDTO 短链接更新请求参数
      * @return Result<Void>
      */
@@ -65,6 +68,7 @@ public class LinkController {
 
     /**
      * 短链接分页查询
+     *
      * @param linkPageReqDTO 分页请求参数
      * @return Result<IPage<LinkPageVO>>
      */
@@ -75,6 +79,7 @@ public class LinkController {
 
     /**
      * 查询分组内短链接数量
+     *
      * @return Result<List<GroupLinkCountQueryVO>>
      */
     @GetMapping("/api/short-link/v1/count")

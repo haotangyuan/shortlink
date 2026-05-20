@@ -2,6 +2,7 @@ package dev.haotangyuan.shortlink.common.convention.errorcode;
 
 /**
  * 平台错误码
+ *
  * @author: haotangyuan
  */
 public interface IErrorCode {

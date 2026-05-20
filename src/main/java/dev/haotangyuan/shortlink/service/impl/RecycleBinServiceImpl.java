@@ -25,6 +25,7 @@ import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.GOTO_SH
 
 /**
  * 回收站管理接口实现层
+ *
  * @author: haotangyuan
  */
 @Service

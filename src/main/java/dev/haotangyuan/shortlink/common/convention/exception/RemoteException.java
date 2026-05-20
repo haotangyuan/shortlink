@@ -5,6 +5,7 @@ import dev.haotangyuan.shortlink.common.convention.errorcode.IErrorCode;
 
 /**
  * 远程服务调用异常
+ *
  * @author: haotangyuan
  */
 public class RemoteException extends AbstractException {

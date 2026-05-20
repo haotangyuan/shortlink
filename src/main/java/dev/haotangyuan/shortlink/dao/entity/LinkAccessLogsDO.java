@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 短链接访问日志实体
+ *
  * @author: haotangyuan
  */
 @Data

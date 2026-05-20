@@ -29,6 +29,7 @@ import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.SHORT_L
 
 /**
  * Redis Stream 消息队列配置
+ *
  * @author: haotangyuan
  */
 @Slf4j

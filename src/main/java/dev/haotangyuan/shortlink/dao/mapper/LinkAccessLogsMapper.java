@@ -17,12 +17,14 @@ import java.util.Map;
 
 /**
  * 短链接访问日志持久层
+ *
  * @author: haotangyuan
  */
 public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
 
     /**
      * 根据短链接获取指定日期内 PV UV UIP 数据
+     *
      * @param linkStatsReqDTO 统计请求参数
      * @return 访问统计数据
      */
@@ -63,6 +65,7 @@ public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
 
     /**
      * 根据短链接获取指定日期内高频访问IP数据
+     *
      * @param linkStatsReqDTO 统计请求参数
      * @return 高频访问IP列表
      */
@@ -88,6 +91,7 @@ public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
 
     /**
      * 根据分组获取指定日期内高频访问IP数据
+     *
      * @param groupStatsReqDTO 统计请求参数
      * @return 高频访问IP列表
      */
@@ -111,6 +115,7 @@ public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
 
     /**
      * 根据短链接获取指定日期内新旧访客数据
+     *
      * @param linkStatsReqDTO 统计请求参数
      * @return 新旧访客统计数据
      */
@@ -132,6 +137,7 @@ public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
 
     /**
      * 根据短链接分页获取访问日志
+     *
      * @param groupStatsAccessRecordReqDTO 查询参数
      * @return 访问日志分页数据
      */

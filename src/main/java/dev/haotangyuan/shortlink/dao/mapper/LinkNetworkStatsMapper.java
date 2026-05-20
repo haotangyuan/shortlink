@@ -12,12 +12,14 @@ import java.util.List;
 
 /**
  * 访问网络统计持久层
+ *
  * @author: haotangyuan
  */
 public interface LinkNetworkStatsMapper extends BaseMapper<LinkNetworkStatsDO> {
 
     /**
      * 记录访问设备监控数据
+     *
      * @param linkNetworkStatsDO 访问网络统计实体
      */
     @Insert("""
@@ -38,6 +40,7 @@ public interface LinkNetworkStatsMapper extends BaseMapper<LinkNetworkStatsDO> {
 
     /**
      * 根据短链接获取指定日期内访问网络监控数据
+     *
      * @param linkStatsReqDTO 查询参数
      * @return 访问网络统计列表
      */
@@ -59,6 +62,7 @@ public interface LinkNetworkStatsMapper extends BaseMapper<LinkNetworkStatsDO> {
 
     /**
      * 根据分组获取指定日期内访问网络监控数据
+     *
      * @param groupStatsReqDTO 查询参数
      * @return 访问网络统计列表
      */

@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * 短码生成器配置（application.yaml 可直接配置）
+ *
  * @author: haotangyuan
  */
 @Data
@@ -19,7 +20,7 @@ public class ShortCodeProps {
     private Integer length = 6;
 
     /**
-     *号段步长：每次从 Redis 预取的数量（默认 10000）
+     * 号段步长：每次从 Redis 预取的数量（默认 10000）
      */
     private Long segmentStep = 10_000L;
 

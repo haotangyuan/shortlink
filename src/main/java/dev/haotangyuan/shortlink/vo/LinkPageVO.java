@@ -7,6 +7,7 @@ import java.util.Date;
 
 /**
  * 短链接分页响应参数
+ *
  * @author: haotangyuan
  */
 @Data

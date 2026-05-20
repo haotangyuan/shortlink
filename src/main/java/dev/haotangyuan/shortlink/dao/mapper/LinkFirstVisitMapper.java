@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Insert;
 
 /**
  * 首次访问判重表 Mapper
+ *
  * @author: haotangyuan
  */
 public interface LinkFirstVisitMapper extends BaseMapper<LinkFirstVisitDO> {

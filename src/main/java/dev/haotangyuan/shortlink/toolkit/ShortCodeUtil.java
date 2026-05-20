@@ -14,6 +14,7 @@ import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.SHORT_C
 
 /**
  * 极简短码生成器
+ *
  * @author: haotangyuan
  */
 public class ShortCodeUtil {
@@ -54,9 +55,11 @@ public class ShortCodeUtil {
 
     private static final Object LOCK = new Object();
 
-    private record Segment(long start, long end) {}
+    private record Segment(long start, long end) {
+    }
 
-    private ShortCodeUtil() {}
+    private ShortCodeUtil() {
+    }
 
     /*
      * 在应用启动时初始化（使用 ShortCodeProps）。
@@ -124,7 +127,7 @@ public class ShortCodeUtil {
      * 获取下一个全局自增 ID，并预取号段
      */
     private static long nextId() {
-        for (;;) {
+        for (; ; ) {
             long c = cursor.getAndIncrement();
             if (c <= end) {
                 maybePrefetch();
@@ -222,7 +225,9 @@ public class ShortCodeUtil {
     private static boolean isCoprime(long a, int b) {
         long x = a, y = b;
         while (y != 0) {
-            long t = x % y; x = y; y = t;
+            long t = x % y;
+            x = y;
+            y = t;
         }
         return x == 1;
     }
@@ -264,7 +269,8 @@ public class ShortCodeUtil {
             throw new IllegalArgumentException("code length mismatch");
         }
         long y = decodeToY(code);
-        long t = (y - B) % N; if (t < 0) t += N;
+        long t = (y - B) % N;
+        if (t < 0) t += N;
         // i = invA * t mod N（用 BigInteger 做一次取模乘法，避免 long 中间值溢出）
         long i = BigInteger.valueOf(INV_A).multiply(BigInteger.valueOf(t)).mod(BigInteger.valueOf(N)).longValue();
         return i;

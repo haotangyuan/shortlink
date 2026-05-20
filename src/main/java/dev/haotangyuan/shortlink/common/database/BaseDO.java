@@ -8,6 +8,7 @@ import java.util.Date;
 
 /**
  * 数据库持久层实体基础属性
+ *
  * @author: haotangyuan
  */
 @Data

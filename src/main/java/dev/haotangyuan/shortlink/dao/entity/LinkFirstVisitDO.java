@@ -10,6 +10,7 @@ import java.util.Date;
 
 /**
  * 首次访问判重表实体
+ *
  * @author: haotangyuan
  */
 @Data

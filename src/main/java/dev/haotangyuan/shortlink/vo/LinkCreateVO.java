@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * 短链接创建响应参数
+ *
  * @author: haotangyuan
  */
 @Data

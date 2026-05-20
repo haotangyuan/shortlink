@@ -14,12 +14,14 @@ import java.util.List;
 
 /**
  * 短链接持久层
+ *
  * @author: haotangyuan
  */
 public interface LinkMapper extends BaseMapper<LinkDO> {
 
     /**
      * 增量更新短链接统计数据
+     *
      * @return 受影响的行数
      */
     @Update("""

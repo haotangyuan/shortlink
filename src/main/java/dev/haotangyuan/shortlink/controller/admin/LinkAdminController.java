@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 短链接控制层
+ *
  * @author: haotangyuan
  */
 @RestController
@@ -29,6 +30,7 @@ public class LinkAdminController {
 
     /**
      * 创建短链接
+     *
      * @param linkCreateReqDTO 短链接创建请求参数
      * @return Result
      */
@@ -47,6 +49,7 @@ public class LinkAdminController {
 
     /**
      * 修改短链接
+     *
      * @param linkUpdateReqDTO 短链接更新请求参数
      * @return Result<Void>
      */
@@ -58,6 +61,7 @@ public class LinkAdminController {
 
     /**
      * 短链接分页查询
+     *
      * @param linkPageReqDTO 分页请求参数
      * @return Result<IPage<LinkPageVO>>
      */

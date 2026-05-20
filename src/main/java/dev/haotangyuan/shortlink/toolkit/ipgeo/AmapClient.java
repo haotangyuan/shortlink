@@ -9,6 +9,7 @@ import java.util.Map;
 
 /**
  * 高德地图 IP 地理位置查询客户端
+ *
  * @author: haotangyuan
  */
 public class AmapClient implements IpGeoClient {
@@ -45,8 +46,8 @@ public class AmapClient implements IpGeoClient {
             return null;
         }
         String province = normalize(r.province);
-        String city     = normalize(r.city);
-        String adcode   = normalize(r.adcode);
+        String city = normalize(r.city);
+        String adcode = normalize(r.adcode);
         String country = (adcode != null && adcode.matches("\\d{6}")) ? "中国" : null;
 
         return GeoInfo.builder()

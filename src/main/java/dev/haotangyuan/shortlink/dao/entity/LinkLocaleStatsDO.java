@@ -11,6 +11,7 @@ import java.util.Date;
 
 /**
  * 地区访问统计实体
+ *
  * @author: haotangyuan
  */
 @Data

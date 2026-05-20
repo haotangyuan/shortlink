@@ -2,6 +2,7 @@ package dev.haotangyuan.shortlink.common.convention.errorcode;
 
 /**
  * 基础错误码定义
+ *
  * @author: haotangyuan
  */
 public enum BaseErrorCode implements IErrorCode {

@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * 短链接系统限流配置文件
+ *
  * @author: haotangyuan
  */
 @Configuration

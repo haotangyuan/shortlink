@@ -6,6 +6,7 @@ import java.util.List;
 
 /**
  * 分页查询回收站请求参数
+ *
  * @author: haotangyuan
  */
 @Data

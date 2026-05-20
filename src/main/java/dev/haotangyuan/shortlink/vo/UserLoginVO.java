@@ -5,6 +5,7 @@ import lombok.Data;
 
 /**
  * 用户登录接口返回响应
+ *
  * @author: haotangyuan
  */
 @Data

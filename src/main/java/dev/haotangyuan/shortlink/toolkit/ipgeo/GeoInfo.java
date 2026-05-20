@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * IP 地理位置信息
+ *
  * @author: haotangyuan
  */
 @Data

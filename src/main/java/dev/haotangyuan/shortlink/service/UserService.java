@@ -8,11 +8,13 @@ import dev.haotangyuan.shortlink.vo.UserVO;
 
 /**
  * 用户接口层
+ *
  * @author: haotangyuan
  */
 public interface UserService {
     /**
      * 根据用户名查询用户信息
+     *
      * @param username 用户名
      * @return UserVO 用户返回实体
      */
@@ -20,6 +22,7 @@ public interface UserService {
 
     /**
      * 查看用户名是否存在
+     *
      * @param username 用户名
      * @return Boolean
      */
@@ -27,6 +30,7 @@ public interface UserService {
 
     /**
      * 注册用户
+     *
      * @param userRegisterReqDTO
      * @return void
      */
@@ -34,6 +38,7 @@ public interface UserService {
 
     /**
      * 修改用户信息
+     *
      * @param userUpdateReqDTO
      * @return void
      */
@@ -41,6 +46,7 @@ public interface UserService {
 
     /**
      * 用户登录
+     *
      * @param userLoginReqDTO
      * @return UserLoginVO
      */
@@ -48,6 +54,7 @@ public interface UserService {
 
     /**
      * 检查用户是否登录
+     *
      * @param username
      * @param token
      * @return Boolean
@@ -56,6 +63,7 @@ public interface UserService {
 
     /**
      * 退出登录
+     *
      * @param username
      * @param token
      * @return

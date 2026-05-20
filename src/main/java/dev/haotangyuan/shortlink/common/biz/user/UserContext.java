@@ -9,24 +9,32 @@ import dev.haotangyuan.shortlink.dto.biz.UserInfoDTO;
 public class UserContext {
     private static final ThreadLocal<String> USERNAME_HOLDER = new TransmittableThreadLocal<>();
 
-    /** 设置用户名到上下文 */
+    /**
+     * 设置用户名到上下文
+     */
     public static void setUsername(String username) {
         USERNAME_HOLDER.set(username);
     }
 
-    /** 兼容旧用法：从对象设置，仅取 username */
+    /**
+     * 兼容旧用法：从对象设置，仅取 username
+     */
     public static void setUser(UserInfoDTO user) {
         if (user != null) {
             setUsername(user.getUsername());
         }
     }
 
-    /** 获取上下文中的用户名 */
+    /**
+     * 获取上下文中的用户名
+     */
     public static String getUsername() {
         return USERNAME_HOLDER.get();
     }
 
-    /** 清理上下文 */
+    /**
+     * 清理上下文
+     */
     public static void removeUser() {
         USERNAME_HOLDER.remove();
     }

@@ -17,12 +17,14 @@ import java.util.List;
 
 /**
  * 短链接接口层
+ *
  * @author: haotangyuan
  */
 public interface LinkService {
 
     /**
      * 创建短链接
+     *
      * @param linkCreateReqDTO
      * @return
      */
@@ -30,12 +32,14 @@ public interface LinkService {
 
     /**
      * 更新短链接
+     *
      * @param linkUpdateReqDTO 短链接更新请求参数
      */
     void updateLink(LinkUpdateReqDTO linkUpdateReqDTO);
 
     /**
      * 短链接分页查询
+     *
      * @param linkPageReqDTO 分页请求参数
      * @return IPage<LinkPageVO>
      */
@@ -43,6 +47,7 @@ public interface LinkService {
 
     /**
      * 查询分组内短链接数量
+     *
      * @param gidList 分组标识列表
      * @return List<GroupLinkCountQueryVO>
      */
@@ -50,14 +55,16 @@ public interface LinkService {
 
     /**
      * 根据短链接还原原始链接
+     *
      * @param shortUri 短链接后缀
-     * @param request HttpServerRequest
+     * @param request  HttpServerRequest
      * @param response HttpServerResponse
      */
     void restoreUrl(String shortUri, ServletRequest request, ServletResponse response);
 
     /**
      * 批量创建短链接
+     *
      * @param linkBatchCreateReqDTO 短链接批量创建请求参数
      * @return LinkBatchCreateVO
      */
@@ -65,6 +72,7 @@ public interface LinkService {
 
     /**
      * 短链接统计
+     *
      * @param linkStatsRecordDTO 短链接统计实体参数
      */
     void linkStats(LinkStatsRecordDTO linkStatsRecordDTO);

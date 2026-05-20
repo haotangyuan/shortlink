@@ -12,12 +12,14 @@ import java.util.List;
 
 /**
  * 地区访问统计持久层
+ *
  * @author: haotangyuan
  */
 public interface LinkLocaleStatsMapper extends BaseMapper<LinkLocaleStatsDO> {
 
     /**
      * 短链接地区访问统计
+     *
      * @param linkLocaleStatsDO 地区访问统计实体
      */
     @Insert("""
@@ -41,6 +43,7 @@ public interface LinkLocaleStatsMapper extends BaseMapper<LinkLocaleStatsDO> {
 
     /**
      * 根据短链接获取指定日期内地区监控数据
+     *
      * @param linkStatsReqDTO 查询参数
      * @return 地区访问统计列表
      */
@@ -62,6 +65,7 @@ public interface LinkLocaleStatsMapper extends BaseMapper<LinkLocaleStatsDO> {
 
     /**
      * 根据分组获取指定日期内地区监控数据
+     *
      * @param groupStatsReqDTO 查询参数
      * @return 地区访问统计列表
      */

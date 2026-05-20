@@ -13,12 +13,14 @@ import java.util.List;
 
 /**
  * 短链接基础访问统计持久层
+ *
  * @author: haotangyuan
  */
 public interface LinkAccessStatsMapper extends BaseMapper<LinkAccessStatsDO> {
 
     /**
      * 记录基础访问监控数据
+     *
      * @param linkAccessStatsDO 访问统计实体
      */
     @Insert("""
@@ -44,6 +46,7 @@ public interface LinkAccessStatsMapper extends BaseMapper<LinkAccessStatsDO> {
 
     /**
      * 根据短链接获取指定日期内基础监控数据
+     *
      * @param linkStatsReqDTO 查询参数
      * @return 基础访问统计列表
      */
@@ -67,6 +70,7 @@ public interface LinkAccessStatsMapper extends BaseMapper<LinkAccessStatsDO> {
 
     /**
      * 根据短链接获取指定日期内小时基础监控数据
+     *
      * @param linkStatsReqDTO 查询参数
      * @return 基础访问统计列表
      */
@@ -88,6 +92,7 @@ public interface LinkAccessStatsMapper extends BaseMapper<LinkAccessStatsDO> {
 
     /**
      * 根据短链接获取指定日期内小时基础监控数据
+     *
      * @param linkStatsReqDTO 查询参数
      * @return 基础访问统计列表
      */
@@ -109,6 +114,7 @@ public interface LinkAccessStatsMapper extends BaseMapper<LinkAccessStatsDO> {
 
     /**
      * 根据分组获取指定日期内基础监控数据
+     *
      * @param groupStatsReqDTO 查询参数
      * @return 基础访问统计列表
      */
@@ -131,6 +137,7 @@ public interface LinkAccessStatsMapper extends BaseMapper<LinkAccessStatsDO> {
 
     /**
      * 根据分组获取指定日期内小时基础监控数据
+     *
      * @param groupStatsReqDTO 查询参数
      * @return 基础访问统计列表
      */
@@ -155,6 +162,7 @@ public interface LinkAccessStatsMapper extends BaseMapper<LinkAccessStatsDO> {
 
     /**
      * 根据分组获取指定日期内星期基础监控数据
+     *
      * @param groupStatsReqDTO 查询参数
      * @return 基础访问统计列表
      */
@@ -175,8 +183,9 @@ public interface LinkAccessStatsMapper extends BaseMapper<LinkAccessStatsDO> {
 
     /**
      * 查询单个短链接今日 PV 总数（从 stats 表）
+     *
      * @param fullShortUrl 完整短链接
-     * @param today 今日日期
+     * @param today        今日日期
      * @return 今日 PV 总数
      */
     @Select("""

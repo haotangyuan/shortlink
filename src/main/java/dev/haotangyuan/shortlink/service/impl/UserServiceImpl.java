@@ -46,6 +46,7 @@ import static dev.haotangyuan.shortlink.common.convention.errorcode.BaseErrorCod
 
 /**
  * 用户接口实现层
+ *
  * @author: haotangyuan
  */
 @Slf4j
@@ -107,8 +108,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
     public void updateByUsername(UserUpdateReqDTO userUpdateReqDTO) {
         // TODO: 需要添加权限校验
         LambdaUpdateWrapper<UserDO> updateWrapper = Wrappers.lambdaUpdate(UserDO.class)
-                        .eq(UserDO::getUsername, userUpdateReqDTO.getUsername());
-        baseMapper.update(BeanUtil.toBean(userUpdateReqDTO, UserDO.class),updateWrapper);
+                .eq(UserDO::getUsername, userUpdateReqDTO.getUsername());
+        baseMapper.update(BeanUtil.toBean(userUpdateReqDTO, UserDO.class), updateWrapper);
     }
 
     @Override

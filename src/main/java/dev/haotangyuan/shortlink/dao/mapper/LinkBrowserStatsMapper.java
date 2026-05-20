@@ -18,6 +18,7 @@ public interface LinkBrowserStatsMapper extends BaseMapper<LinkBrowserStatsDO> {
 
     /**
      * 记录浏览器访问监控数据
+     *
      * @param linkBrowserStatsDO 浏览器统计实体
      */
     @Insert("""
@@ -38,6 +39,7 @@ public interface LinkBrowserStatsMapper extends BaseMapper<LinkBrowserStatsDO> {
 
     /**
      * 根据短链接获取指定日期内浏览器监控数据
+     *
      * @param linkStatsReqDTO 查询参数
      * @return 浏览器访问统计列表
      */
@@ -59,6 +61,7 @@ public interface LinkBrowserStatsMapper extends BaseMapper<LinkBrowserStatsDO> {
 
     /**
      * 根据分组获取指定日期内浏览器监控数据
+     *
      * @param groupStatsReqDTO 查询参数
      * @return 浏览器访问统计列表
      */

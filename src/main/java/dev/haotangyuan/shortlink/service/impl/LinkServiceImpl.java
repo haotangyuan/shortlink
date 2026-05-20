@@ -52,6 +52,7 @@ import org.redisson.api.RReadWriteLock;
 import org.redisson.api.RedissonClient;
 
 import java.util.concurrent.locks.ReentrantLock;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DuplicateKeyException;
@@ -74,6 +75,7 @@ import static dev.haotangyuan.shortlink.common.constant.UserConstant.PUBLIC_USER
 
 /**
  * 短链接接口实现层
+ *
  * @author: haotangyuan
  */
 @Slf4j
@@ -121,7 +123,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             groupOwnershipService.assertOwnedByCurrentUser(linkCreateReqDTO.getGid());
         }
         verificationWhitelist(linkCreateReqDTO.getOriginUrl());
-        
+
         // 设置默认值
         if (linkCreateReqDTO.getCreatedType() == null) {
             linkCreateReqDTO.setCreatedType(0);
@@ -129,11 +131,11 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         if (linkCreateReqDTO.getValidDateType() == null) {
             linkCreateReqDTO.setValidDateType(ValidDateTypeEnum.CUSTOM.getType());
         }
-        
+
         // 处理有效期逻辑，限制最大3天
         Date now = new Date();
         Date maxValidDate = DateUtil.offsetDay(now, 3);
-        
+
         if (linkCreateReqDTO.getValidDate() == null) {
             // 如果没有传入validDate，默认设置为1天后
             linkCreateReqDTO.setValidDate(DateUtil.offsetDay(now, 1));
@@ -141,12 +143,12 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             // 如果传入的validDate超过3天，修正为3天
             linkCreateReqDTO.setValidDate(maxValidDate);
         }
-        
+
         // 确保不是永久有效
         if (linkCreateReqDTO.getValidDateType() == ValidDateTypeEnum.PERMANENT.getType()) {
             linkCreateReqDTO.setValidDateType(ValidDateTypeEnum.CUSTOM.getType());
         }
-        
+
         String shortCode = ShortCodeUtil.next();
         String fullShortUrl = StrBuilder.create(createLinkDefaultDomain)
                 .append("/")
@@ -307,19 +309,19 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         groupOwnershipService.assertOwnedByCurrentUser(linkPageReqDTO.getGid());
         Page<LinkDO> page = new Page<>(linkPageReqDTO.getCurrent(), linkPageReqDTO.getSize());
         IPage<LinkDO> resultPage = baseMapper.pageLink(page, linkPageReqDTO);
-        
+
         // 获取所有短链接列表以批量计算今日 UV/UIP
         List<String> fullShortUrls = resultPage.getRecords().stream()
                 .map(LinkDO::getFullShortUrl)
                 .toList();
-        
+
         // 使用批量 Lua 脚本获取今日 UV/UIP
         Map<String, int[]> todayStatsMap = batchGetTodayStats(fullShortUrls);
-        
+
         return resultPage.convert(each -> {
             LinkPageVO bean = BeanUtil.toBean(each, LinkPageVO.class);
             bean.setDomain("http://" + bean.getDomain());
-            
+
             // 设置今日统计
             int[] todayStats = todayStatsMap.get(each.getFullShortUrl());
             if (todayStats != null) {
@@ -331,7 +333,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                 bean.setTodayUv(0);
                 bean.setTodayUip(0);
             }
-            
+
             return bean;
         });
     }
@@ -341,53 +343,53 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
      */
     private Map<String, int[]> batchGetTodayStats(List<String> fullShortUrls) {
         Map<String, int[]> resultMap = new HashMap<>();
-        
+
         if (fullShortUrls == null || fullShortUrls.isEmpty()) {
             return resultMap;
         }
-        
+
         // 计算 v = epochDay(Asia/Shanghai) % 2
-        int v = (int)(LocalDate.now(ZoneId.of("Asia/Shanghai")).toEpochDay() % 2);
-        
+        int v = (int) (LocalDate.now(ZoneId.of("Asia/Shanghai")).toEpochDay() % 2);
+
         String uvPrefix = String.format(STATS_UV_PREFIX, v);
         String uipPrefix = String.format(STATS_UIP_PREFIX, v);
         String fsuList = String.join(",", fullShortUrls);
-        
+
         try {
             // 批量获取 UV 数据
-            List<Object> uvResults = stringRedisTemplate.execute(hllBatchScript, 
-                Arrays.asList(uvPrefix), fsuList);
-            
+            List<Object> uvResults = stringRedisTemplate.execute(hllBatchScript,
+                    Arrays.asList(uvPrefix), fsuList);
+
             // 批量获取 UIP 数据
-            List<Object> uipResults = stringRedisTemplate.execute(hllBatchScript, 
-                Arrays.asList(uipPrefix), fsuList);
-            
+            List<Object> uipResults = stringRedisTemplate.execute(hllBatchScript,
+                    Arrays.asList(uipPrefix), fsuList);
+
             // 合并结果
             for (int i = 0; i < fullShortUrls.size(); i++) {
                 String fullShortUrl = fullShortUrls.get(i);
-                
+
                 int todayUv = 0;
                 int todayUip = 0;
-                
+
                 if (uvResults != null && i < uvResults.size()) {
                     Object uvObj = uvResults.get(i);
                     todayUv = uvObj instanceof Number ? ((Number) uvObj).intValue() : 0;
                 }
-                
+
                 if (uipResults != null && i < uipResults.size()) {
                     Object uipObj = uipResults.get(i);
                     todayUip = uipObj instanceof Number ? ((Number) uipObj).intValue() : 0;
                 }
-                
+
                 // 获取今日 PV
                 int todayPv = getTodayPvFromStats(fullShortUrl);
-                
+
                 resultMap.put(fullShortUrl, new int[]{todayPv, todayUv, todayUip});
             }
         } catch (Exception e) {
             log.warn("Failed to batch get today stats, returning empty map", e);
         }
-        
+
         return resultMap;
     }
 
@@ -400,7 +402,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             ZoneId shanghaiZone = ZoneId.of("Asia/Shanghai");
             LocalDate today = LocalDate.now(shanghaiZone);
             Date todayDate = Date.from(today.atStartOfDay(shanghaiZone).toInstant());
-            
+
             // 从 stats 表查询今日 PV 总数
             return linkAccessStatsMapper.sumTodayPvByShortUrl(fullShortUrl, todayDate);
         } catch (Exception e) {

@@ -11,6 +11,7 @@ import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.IDEMPOT
 
 /**
  * 消息队列幂等处理器
+ *
  * @author: haotangyuan
  */
 @Component
@@ -21,6 +22,7 @@ public class MessageQueueIdempotentHandler {
 
     /**
      * 判断消息是否已被处理过（同时尝试标记为处理中）
+     *
      * @param messageId 消息唯一标识
      * @return true-消息已被处理过（重复消费）, false-首次处理
      */
@@ -32,6 +34,7 @@ public class MessageQueueIdempotentHandler {
 
     /**
      * 判断消息消费流程是否执行完成
+     *
      * @param messageId 消息唯一标识
      * @return 消息是否执行完成
      */
@@ -43,6 +46,7 @@ public class MessageQueueIdempotentHandler {
     /**
      * 设置消息流程执行完成
      * 第一次被获取到的最坏时间为 minIdleMs + 巡检间隔，也就是 2.5 分钟
+     *
      * @param messageId 消息唯一标识
      */
     public void setAccomplish(String messageId) {
@@ -52,6 +56,7 @@ public class MessageQueueIdempotentHandler {
 
     /**
      * 释放幂等标识（消息处理失败时调用）
+     *
      * @param messageId 消息唯一标识
      */
     public void release(String messageId) {

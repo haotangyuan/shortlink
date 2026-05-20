@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 启动引导：由 Spring 容器在应用启动时执行一次，初始化短码生成器。
+ *
  * @author: haotangyuan
  */
 @Component

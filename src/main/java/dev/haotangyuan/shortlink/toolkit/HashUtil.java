@@ -4,6 +4,7 @@ import cn.hutool.core.lang.hash.MurmurHash;
 
 /**
  * HASH 工具类
+ *
  * @author: haotangyuan
  */
 public class HashUtil {

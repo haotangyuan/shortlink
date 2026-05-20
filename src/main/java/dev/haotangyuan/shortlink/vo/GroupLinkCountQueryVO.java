@@ -4,6 +4,7 @@ import lombok.Data;
 
 /**
  * 分组查询响应参数
+ *
  * @author: haotangyuan
  */
 @Data

@@ -7,6 +7,7 @@ import java.util.Optional;
 
 /**
  * 服务端异常
+ *
  * @author: haotangyuan
  */
 public class ServiceException extends AbstractException {

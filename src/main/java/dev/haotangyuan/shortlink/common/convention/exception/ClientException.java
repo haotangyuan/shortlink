@@ -5,6 +5,7 @@ import dev.haotangyuan.shortlink.common.convention.errorcode.IErrorCode;
 
 /**
  * 客户端异常
+ *
  * @author: haotangyuan
  */
 public class ClientException extends AbstractException {

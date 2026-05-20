@@ -4,6 +4,7 @@ import lombok.Data;
 
 /**
  * 新增短链接分组请求参数
+ *
  * @author: haotangyuan
  */
 @Data

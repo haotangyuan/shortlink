@@ -11,6 +11,7 @@ public final class RandomGenerator {
 
     /**
      * 生成随机字符串
+     *
      * @param length 长度
      * @return 随机字符串
      */

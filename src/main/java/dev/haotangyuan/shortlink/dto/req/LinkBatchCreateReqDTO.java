@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * 短链接批量创建请求对象
+ *
  * @author: haotangyuan
  */
 @Data

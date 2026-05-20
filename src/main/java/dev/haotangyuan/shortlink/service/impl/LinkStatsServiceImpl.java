@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 访问统计接口实现层
+ *
  * @author: haotangyuan
  */
 @Slf4j
@@ -333,7 +334,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
         });
         // 小时访问详情
         List<Integer> hourStats = new ArrayList<>();
-        List<LinkAccessStatsDO> listHourStatsByGroup = CollUtil.isNotEmpty(listStatsByGroup) 
+        List<LinkAccessStatsDO> listHourStatsByGroup = CollUtil.isNotEmpty(listStatsByGroup)
                 ? linkAccessStatsMapper.listHourStatsByGroup(groupStatsReqDTO)
                 : new ArrayList<>();
         for (int i = 0; i < 24; i++) {
@@ -433,7 +434,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                     .build();
             networkStats.add(networkRespDTO);
         });
-        
+
         return LinkStatsVO.builder()
                 .pv(totalPv)
                 .uv(totalUv)

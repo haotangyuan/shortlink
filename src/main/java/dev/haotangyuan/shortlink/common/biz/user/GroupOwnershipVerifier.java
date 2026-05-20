@@ -10,12 +10,14 @@ public interface GroupOwnershipVerifier {
 
     /**
      * 断言 gid 属于当前用户
+     *
      * @param gid 分组标识
      */
     void assertOwnedByCurrentUser(String gid);
 
     /**
      * 断言一组 gid 均属于当前用户
+     *
      * @param gids 分组标识列表
      */
     void assertAllOwnedByCurrentUser(List<String> gids);

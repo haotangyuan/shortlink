@@ -10,6 +10,7 @@ import java.util.Date;
 
 /**
  * 短链接基础访问(PV UV UIP)实体
+ *
  * @author: haotangyuan
  */
 @Data

@@ -11,6 +11,7 @@ import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.SHORT_L
 
 /**
  * 初始化短链接监控消息队列消费者组
+ *
  * @author: haotangyuan
  */
 @Component

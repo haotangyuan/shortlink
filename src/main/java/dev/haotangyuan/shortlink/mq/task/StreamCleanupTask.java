@@ -19,6 +19,7 @@ import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.SHORT_L
 /**
  * Stream 消息清理任务
  * 策略：保留 Pending 消息 + 最近已消费的缓冲，删除其他旧消息
+ *
  * @author: haotangyuan
  */
 @Slf4j

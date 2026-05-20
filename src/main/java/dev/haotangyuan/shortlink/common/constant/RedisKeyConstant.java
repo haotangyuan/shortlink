@@ -2,6 +2,7 @@ package dev.haotangyuan.shortlink.common.constant;
 
 /**
  * Redis Key 常量类
+ *
  * @author: haotangyuan
  */
 public class RedisKeyConstant {

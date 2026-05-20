@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * 跳转域名白名单配置文件
+ *
  * @author: haotangyuan
  */
 @Data

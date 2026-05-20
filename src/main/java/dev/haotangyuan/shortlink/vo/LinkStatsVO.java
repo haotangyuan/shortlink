@@ -9,6 +9,7 @@ import java.util.List;
 
 /**
  * 短链接监控响应参数
+ *
  * @author: haotangyuan
  */
 @Data

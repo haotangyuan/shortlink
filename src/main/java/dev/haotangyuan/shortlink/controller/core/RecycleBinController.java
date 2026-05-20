@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 回收站控制层
+ *
  * @author: haotangyuan
  */
 @RequiredArgsConstructor
@@ -27,6 +28,7 @@ public class RecycleBinController {
 
     /**
      * 移至回收站
+     *
      * @param recycleBinSaveReqDTO 移至回收站保存请求参数
      * @return Result<Void>
      */
@@ -38,6 +40,7 @@ public class RecycleBinController {
 
     /**
      * 短链接分页查询
+     *
      * @param recycleBinLinkPageReqDTO 分页请求参数
      * @return Result<IPage<LinkPageVO>>
      */
@@ -48,6 +51,7 @@ public class RecycleBinController {
 
     /**
      * 恢复短链接
+     *
      * @param recycleBinRestoreReqDTO 恢复请求参数
      * @return Result<Void>
      */
@@ -59,6 +63,7 @@ public class RecycleBinController {
 
     /**
      * 从回收站移除短链接
+     *
      * @param recycleBinRemoveReqDTO 回收站移除请求参数
      * @return Result<Void>
      */
