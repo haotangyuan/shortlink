@@ -51,6 +51,7 @@ shardingsphere-local.yaml
 benchmark/
 .claude/
 .codex/
+.codegraph/
 openspec/
 com/
 
