@@ -1,5 +1,5 @@
-# 使用 Eclipse Temurin 17 JRE 基础镜像
-FROM eclipse-temurin:17-jre
+# 使用 Eclipse Temurin 21 JRE 基础镜像
+FROM eclipse-temurin:21-jre
 
 # 设置工作目录
 WORKDIR /app

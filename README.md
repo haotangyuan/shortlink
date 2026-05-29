@@ -15,7 +15,7 @@
 
 | 层级 | 技术 |
 |------|------|
-| 语言 | Java 17 |
+| 语言 | Java 21 |
 | 框架 | Spring Boot 3.1.10 |
 | 构建 | Maven |
 | ORM | MyBatis Plus 3.5.5 |
@@ -163,7 +163,7 @@ t_group_0, t_group_1, ... t_group_15
 ### 本地开发
 
 ```bash
-# 1. 确保已安装 JDK 17、Maven、MySQL 8.0、Redis 7.0
+# 1. 确保已安装 JDK 21、Maven、MySQL 8.0、Redis 7.0
 # 2. 在 MySQL 中创建数据库并导入表结构
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS db_shortlink"
 mysql -u root -p db_shortlink < link.sql
