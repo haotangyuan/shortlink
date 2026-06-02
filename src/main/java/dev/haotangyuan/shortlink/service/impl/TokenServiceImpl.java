@@ -58,10 +58,12 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
                 .orderByDesc(TokenDO::getUpdateTime);
         List<TokenDO> list = baseMapper.selectList(qw);
         return list.stream().map(each -> TokenVO.builder()
+                .id(each.getId())
                 .name(each.getName())
                 .enableStatus(each.getEnableStatus())
                 .validDate(each.getValidDate())
                 .describe(each.getDescribe())
+                .updateTime(each.getUpdateTime())
                 .tokenMasked(mask(each.getTokenLast4()))
                 .build()).toList();
     }

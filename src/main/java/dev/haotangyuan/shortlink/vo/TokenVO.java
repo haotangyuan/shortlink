@@ -17,6 +17,11 @@ import java.util.Date;
 public class TokenVO {
 
     /**
+     * 令牌 ID
+     */
+    private Long id;
+
+    /**
      * token 脱敏
      */
     private String tokenMasked;
@@ -40,5 +45,9 @@ public class TokenVO {
      * 描述
      */
     private String describe;
-}
 
+    /**
+     * 修改时间
+     */
+    private Date updateTime;
+}

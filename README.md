@@ -94,14 +94,41 @@ Started ShortLinkApplication in X seconds
 Tomcat started on port(s): 8068 (http)
 ```
 
-### 5. 访问验证
+### 5. 前端开发
+
+前端项目位于仓库根目录的 `frontend/`，技术栈为 React + TypeScript + Tailwind CSS + Vite。开发环境通过 Vite 代理 `/api` 到本地后端 `http://127.0.0.1:8068`。
+
+```bash
+cd frontend
+npm install
+npm run dev
+npm run typecheck
+npm run build
+```
+
+开发访问地址：
+
+- **前端应用**：http://127.0.0.1:5173/app
+- **后端服务**：http://127.0.0.1:8068
+
+生产构建时，将 Vite 输出复制到 Spring Boot 静态资源路径 `/app`：
+
+```bash
+./scripts/build-frontend.sh
+mvn clean package -DskipTests
+```
+
+应用启动后通过 `http://127.0.0.1:8068/app` 访问前端。短链跳转仍保留在根路径，例如 `http://127.0.0.1:8068/xxxxxx`。
+
+### 6. 访问验证
 
 打开浏览器访问：
 
 - **API 文档（Scalar）**：http://127.0.0.1:8068/scalar.html
 - **Swagger UI**：http://127.0.0.1:8068/swagger-ui/index.html
+- **前端应用**：http://127.0.0.1:8068/app
 
-### 6. 快速接口测试
+### 7. 快速接口测试
 
 ```bash
 # 1. 注册用户
