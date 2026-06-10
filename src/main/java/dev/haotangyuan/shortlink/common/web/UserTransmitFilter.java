@@ -33,7 +33,8 @@ public class UserTransmitFilter implements Filter {
 
     private final Set<String> IGNORE_URI = Set.of(
             "/api/short-link/admin/v1/user/login",
-            "/api/short-link/admin/v1/user/exists"
+            "/api/short-link/admin/v1/user/exists",
+            "/api/short-link/admin/v1/user/register"
     );
 
     @Override
@@ -43,7 +44,8 @@ public class UserTransmitFilter implements Filter {
         if (!IGNORE_URI.contains(requestURI)) {
             String method = httpServletRequest.getMethod();
             boolean isRegister = Objects.equals(requestURI, "/api/short-link/admin/v1/user") && Objects.equals(method, "POST");
-            if (!isRegister) {
+            boolean isLogout = Objects.equals(requestURI, "/api/short-link/admin/v1/user/logout") && Objects.equals(method, "DELETE");
+            if (!isRegister && !isLogout) {
                 String authz = httpServletRequest.getHeader("Authorization");
                 boolean adminCreate = isAdminCreate(httpServletRequest);
                 // 特殊放行：admin 创建短链允许未携带 Authorization，以 public 身份创建

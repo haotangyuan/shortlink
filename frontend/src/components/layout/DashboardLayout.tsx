@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "../ui/Button";
 import { useAuth } from "../../store/auth";
 import { cn } from "../../lib/cn";
@@ -28,6 +28,12 @@ const navItems = [
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    await logout();
+    navigate("/login");
+  }
 
   return (
     <div className="flex h-full flex-col border-r border-slate-200 bg-white">
@@ -55,7 +61,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
       <div className="border-t border-slate-100 p-3">
-        <Button variant="ghost" className="w-full justify-start" onClick={() => void logout()}>
+        <Button variant="ghost" className="w-full justify-start" onClick={handleLogout}>
           <LogOut className="h-4 w-4" />
           退出登录
         </Button>

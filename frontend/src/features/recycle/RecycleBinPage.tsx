@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/Button";
 import { Card, CardContent } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { useToast } from "../../components/ui/Toast";
+import { formatTimestamp } from "../../lib/date";
 
 export function RecycleBinPage() {
   const queryClient = useQueryClient();
@@ -63,7 +64,7 @@ export function RecycleBinPage() {
                       <tr key={link.id} className="border-b border-slate-100">
                         <td className="py-3 font-medium text-slate-950">{link.fullShortUrl}</td>
                         <td className="py-3 text-slate-500">{link.originUrl}</td>
-                        <td className="py-3 text-slate-500">{link.delTime ?? "-"}</td>
+                        <td className="py-3 text-slate-500">{formatTimestamp(link.delTime)}</td>
                         <td className="py-3">
                           <div className="flex justify-end gap-2">
                             <Button variant="secondary" onClick={() => restoreMutation.mutate(link)}>

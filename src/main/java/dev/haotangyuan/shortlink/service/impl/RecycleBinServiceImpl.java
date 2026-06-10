@@ -9,6 +9,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import dev.haotangyuan.shortlink.common.biz.user.GroupOwnershipVerifier;
 import dev.haotangyuan.shortlink.dao.entity.LinkDO;
+import dev.haotangyuan.shortlink.dao.mapper.LinkAccessStatsMapper;
 import dev.haotangyuan.shortlink.dao.mapper.LinkMapper;
 import dev.haotangyuan.shortlink.dto.req.RecycleBinLinkPageReqDTO;
 import dev.haotangyuan.shortlink.dto.req.RecycleBinRemoveReqDTO;
@@ -19,6 +20,13 @@ import dev.haotangyuan.shortlink.service.RecycleBinService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.GOTO_IS_NULL_SHORT_LINK_KEY;
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.GOTO_SHORT_LINK_KEY;
@@ -34,6 +42,7 @@ public class RecycleBinServiceImpl extends ServiceImpl<LinkMapper, LinkDO> imple
 
     private final StringRedisTemplate stringRedisTemplate;
     private final GroupOwnershipVerifier groupOwnershipService;
+    private final LinkAccessStatsMapper linkAccessStatsMapper;
 
     @Override
     public void saveRecycledBin(RecycleBinSaveReqDTO recycleBinSaveReqDTO) {
@@ -65,8 +74,24 @@ public class RecycleBinServiceImpl extends ServiceImpl<LinkMapper, LinkDO> imple
         return resultPage.convert(each -> {
             LinkPageVO bean = BeanUtil.toBean(each, LinkPageVO.class);
             bean.setDomain("http://" + bean.getDomain());
+            // 填充今日统计（不为 null）
+            int todayPv = getTodayPv(each.getFullShortUrl());
+            bean.setTodayPv(todayPv);
+            bean.setTodayUv(0);
+            bean.setTodayUip(0);
             return bean;
         });
+    }
+
+    private int getTodayPv(String fullShortUrl) {
+        try {
+            ZoneId shanghaiZone = ZoneId.of("Asia/Shanghai");
+            LocalDate today = LocalDate.now(shanghaiZone);
+            Date todayDate = Date.from(today.atStartOfDay(shanghaiZone).toInstant());
+            return linkAccessStatsMapper.sumTodayPvByShortUrl(fullShortUrl, todayDate);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     @Override

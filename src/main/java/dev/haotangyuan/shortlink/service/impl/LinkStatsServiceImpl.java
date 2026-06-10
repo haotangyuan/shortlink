@@ -46,12 +46,13 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     @Override
     public LinkStatsVO oneShortLinkStats(LinkStatsReqDTO linkStatsReqDTO) {
         groupOwnershipService.assertOwnedByCurrentUser(linkStatsReqDTO.getGid());
-        List<LinkAccessStatsDO> listStatsByShortLink = linkAccessStatsMapper.listStatsByShortLink(linkStatsReqDTO);
-        if (CollUtil.isEmpty(listStatsByShortLink)) {
-            return null;
-        }
-        // 基础访问数据
+        List<LinkAccessStatsDO> statsResult = linkAccessStatsMapper.listStatsByShortLink(linkStatsReqDTO);
+        final List<LinkAccessStatsDO> listStatsByShortLink = CollUtil.isEmpty(statsResult) ? Collections.emptyList() : statsResult;
+        // 基础访问数据（从访问日志表汇总，不依赖 stats 聚合表）
         LinkAccessStatsDO pvUvUidStatsByShortLink = linkAccessLogsMapper.findPvUvUidStatsByShortLink(linkStatsReqDTO);
+        if (pvUvUidStatsByShortLink == null) {
+            pvUvUidStatsByShortLink = new LinkAccessStatsDO();
+        }
         // 基础访问详情
         List<LinkStatsAccessDailyVO> daily = new ArrayList<>();
         List<String> rangeDates = DateUtil.rangeToList(DateUtil.parse(linkStatsReqDTO.getStartDate()), DateUtil.parse(linkStatsReqDTO.getEndDate()), DateField.DAY_OF_MONTH).stream()
@@ -219,9 +220,9 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             networkStats.add(networkRespDTO);
         });
         return LinkStatsVO.builder()
-                .pv(pvUvUidStatsByShortLink.getPv())
-                .uv(pvUvUidStatsByShortLink.getUv())
-                .uip(pvUvUidStatsByShortLink.getUip())
+                .pv(Optional.ofNullable(pvUvUidStatsByShortLink.getPv()).orElse(0))
+                .uv(Optional.ofNullable(pvUvUidStatsByShortLink.getUv()).orElse(0))
+                .uip(Optional.ofNullable(pvUvUidStatsByShortLink.getUip()).orElse(0))
                 .daily(daily)
                 .localeCnStats(localeCnStats)
                 .hourStats(hourStats)
@@ -238,9 +239,14 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     @Override
     public IPage<LinkStatsAccessRecordVO> shortLinkStatsAccessRecord(LinkStatsAccessRecordReqDTO linkStatsAccessRecordReqDTO) {
         groupOwnershipService.assertOwnedByCurrentUser(linkStatsAccessRecordReqDTO.getGid());
+        String endDate = linkStatsAccessRecordReqDTO.getEndDate();
+        if (endDate != null && !endDate.contains(" ")) {
+            endDate = endDate + " 23:59:59";
+        }
         LambdaQueryWrapper<LinkAccessLogsDO> queryWrapper = Wrappers.lambdaQuery(LinkAccessLogsDO.class)
                 .eq(LinkAccessLogsDO::getFullShortUrl, linkStatsAccessRecordReqDTO.getFullShortUrl())
-                .between(LinkAccessLogsDO::getCreateTime, linkStatsAccessRecordReqDTO.getStartDate(), linkStatsAccessRecordReqDTO.getEndDate())
+                .ge(LinkAccessLogsDO::getCreateTime, linkStatsAccessRecordReqDTO.getStartDate())
+                .le(LinkAccessLogsDO::getCreateTime, endDate)
                 .eq(LinkAccessLogsDO::getDelFlag, 0)
                 .orderByDesc(LinkAccessLogsDO::getCreateTime);
         Page<LinkAccessLogsDO> page = new Page<>(linkStatsAccessRecordReqDTO.getCurrent(), linkStatsAccessRecordReqDTO.getSize());
@@ -445,6 +451,10 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     @Override
     public IPage<LinkStatsAccessRecordVO> groupShortLinkStatsAccessRecord(GroupStatsAccessRecordReqDTO groupStatsAccessRecordReqDTO) {
         groupOwnershipService.assertOwnedByCurrentUser(groupStatsAccessRecordReqDTO.getGid());
+        String endDate = groupStatsAccessRecordReqDTO.getEndDate();
+        if (endDate != null && !endDate.contains(" ")) {
+            groupStatsAccessRecordReqDTO.setEndDate(endDate + " 23:59:59");
+        }
         Page<LinkAccessLogsDO> page = new Page<>(groupStatsAccessRecordReqDTO.getCurrent(), groupStatsAccessRecordReqDTO.getSize());
         IPage<LinkAccessLogsDO> linkAccessLogsDOIPage = linkAccessLogsMapper.selectGroupPage(page, groupStatsAccessRecordReqDTO);
         if (CollUtil.isEmpty(linkAccessLogsDOIPage.getRecords())) {

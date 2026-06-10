@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import dev.haotangyuan.shortlink.common.convention.errorcode.BaseErrorCode;
 import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
+import dev.haotangyuan.shortlink.common.biz.user.UserContext;
 import dev.haotangyuan.shortlink.toolkit.HashUtil;
 import dev.haotangyuan.shortlink.dao.entity.GroupDO;
 import dev.haotangyuan.shortlink.dao.entity.UserDO;
@@ -116,7 +117,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
 
     @Override
     public void updateByUsername(UserUpdateReqDTO userUpdateReqDTO) {
-        // TODO: 需要添加权限校验
+        // 权限校验：仅允许当前登录用户修改自己的信息
+        String currentUsername = UserContext.getUsername();
+        if (currentUsername == null || !currentUsername.equals(userUpdateReqDTO.getUsername())) {
+            throw new ClientException("无权修改其他用户的信息");
+        }
         LambdaUpdateWrapper<UserDO> updateWrapper = Wrappers.lambdaUpdate(UserDO.class)
                 .eq(UserDO::getUsername, userUpdateReqDTO.getUsername());
         UserDO userDO = BeanUtil.toBean(userUpdateReqDTO, UserDO.class);
@@ -170,12 +175,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
 
     @Override
     public void logout(String username, String token) {
-        String key = String.format(SESSION_KEY, token);
-        String actualUsername = stringRedisTemplate.opsForValue().get(key);
-        if (actualUsername == null || !actualUsername.equals(username)) {
-            throw new ClientException("用户未登录或登录已过期");
+        // 幂等：即使 token 已过期或不存在也返回成功
+        if (username == null || token == null) {
+            return;
         }
-        stringRedisTemplate.delete(key);
+        String key = String.format(SESSION_KEY, token);
+        try {
+            stringRedisTemplate.delete(key);
+        } catch (Throwable t) {
+            log.warn("Logout delete session error, username={}, token={}", username, token, t);
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
 import dev.haotangyuan.shortlink.common.convention.errorcode.BaseErrorCode;
 import dev.haotangyuan.shortlink.common.convention.exception.AbstractException;
+import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
 import dev.haotangyuan.shortlink.common.convention.result.Result;
 import dev.haotangyuan.shortlink.common.convention.result.Results;
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,7 +50,12 @@ public class GlobalExceptionHandler {
             log.error("[{}] {} [ex] {}", request.getMethod(), request.getRequestURL().toString(), ex.toString(), ex.getCause());
             return Results.failure(ex);
         }
-        log.error("[{}] {} [ex] {}", request.getMethod(), request.getRequestURL().toString(), ex.toString());
+        // 客户端异常（如"密码错误"、"用户不存在"）用 WARN 级别，服务端异常用 ERROR 级别
+        if (ex instanceof ClientException) {
+            log.warn("[{}] {} [ex] {}", request.getMethod(), request.getRequestURL().toString(), ex.toString());
+        } else {
+            log.error("[{}] {} [ex] {}", request.getMethod(), request.getRequestURL().toString(), ex.toString());
+        }
         return Results.failure(ex);
     }
 
