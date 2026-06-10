@@ -10,6 +10,7 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import dev.haotangyuan.shortlink.common.convention.errorcode.BaseErrorCode;
 import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
+import dev.haotangyuan.shortlink.toolkit.HashUtil;
 import dev.haotangyuan.shortlink.dao.entity.GroupDO;
 import dev.haotangyuan.shortlink.dao.entity.UserDO;
 import dev.haotangyuan.shortlink.dao.mapper.GroupMapper;
@@ -98,7 +99,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
             throw new ClientException(USER_NAME_EXIST);
         }
         try {
-            int inserted = baseMapper.insert(BeanUtil.toBean(requestParam, UserDO.class));
+            UserDO userDO = BeanUtil.toBean(requestParam, UserDO.class);
+            userDO.setPassword(HashUtil.encryptByBcrypt(requestParam.getPassword()));
+            int inserted = baseMapper.insert(userDO);
             if (inserted < 1) {
                 throw new ClientException(USER_SAVE_ERROR);
             }
@@ -116,18 +119,25 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         // TODO: 需要添加权限校验
         LambdaUpdateWrapper<UserDO> updateWrapper = Wrappers.lambdaUpdate(UserDO.class)
                 .eq(UserDO::getUsername, userUpdateReqDTO.getUsername());
-        baseMapper.update(BeanUtil.toBean(userUpdateReqDTO, UserDO.class), updateWrapper);
+        UserDO userDO = BeanUtil.toBean(userUpdateReqDTO, UserDO.class);
+        if (userUpdateReqDTO.getPassword() != null && !userUpdateReqDTO.getPassword().isEmpty()) {
+            userDO.setPassword(HashUtil.encryptByBcrypt(userUpdateReqDTO.getPassword()));
+        }
+        baseMapper.update(userDO, updateWrapper);
     }
 
     @Override
     public UserLoginVO login(UserLoginReqDTO userLoginReqDTO) {
         LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
                 .eq(UserDO::getUsername, userLoginReqDTO.getUsername())
-                .eq(UserDO::getPassword, userLoginReqDTO.getPassword())
                 .eq(UserDO::getDelFlag, 0);
         UserDO userDO = baseMapper.selectOne(queryWrapper);
         if (userDO == null) {
             throw new ClientException("用户不存在");
+        }
+        // BCrypt 密码校验
+        if (!HashUtil.decryptByBcrypt(userLoginReqDTO.getPassword(), userDO.getPassword())) {
+            throw new ClientException("密码错误");
         }
         Map<Object, Object> hasLoginMap = stringRedisTemplate.opsForHash().entries(USER_LOGIN_KEY + userLoginReqDTO.getUsername());
         if (CollUtil.isNotEmpty(hasLoginMap)) {

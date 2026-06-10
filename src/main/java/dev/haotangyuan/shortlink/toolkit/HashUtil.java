@@ -1,6 +1,7 @@
 package dev.haotangyuan.shortlink.toolkit;
 
 import cn.hutool.core.lang.hash.MurmurHash;
+import cn.hutool.crypto.digest.BCrypt;
 
 /**
  * HASH 工具类
@@ -31,5 +32,19 @@ public class HashUtil {
         int i = MurmurHash.hash32(str);
         long num = i < 0 ? Integer.MAX_VALUE - (long) i : i;
         return convertDecToBase62(num);
+    }
+
+    /**
+     * BCrypt 密码加密
+     */
+    public static String encryptByBcrypt(String rawPassword) {
+        return BCrypt.hashpw(rawPassword);
+    }
+
+    /**
+     * BCrypt 密码校验
+     */
+    public static boolean decryptByBcrypt(String rawPassword, String encodedPassword) {
+        return BCrypt.checkpw(rawPassword, encodedPassword);
     }
 }
