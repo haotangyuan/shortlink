@@ -7,6 +7,7 @@ import {
   LogOut,
   Menu,
   Recycle,
+  Sparkles,
   UserRound,
   X,
 } from "lucide-react";
@@ -22,6 +23,7 @@ const navItems = [
   { to: "/dashboard/links", label: "链接管理", icon: LinkIcon },
   { to: "/dashboard/recycle", label: "回收站", icon: Recycle },
   { to: "/dashboard/analytics", label: "数据统计", icon: BarChart3 },
+  { to: "/dashboard/ai-chat", label: "AI 运营助手", icon: Sparkles },
   { to: "/dashboard/developer/token", label: "开发者中心", icon: Code2 },
   { to: "/dashboard/profile", label: "个人设置", icon: UserRound },
 ];

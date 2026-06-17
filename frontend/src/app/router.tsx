@@ -14,6 +14,7 @@ import { LinksPage } from "../features/links/LinksPage";
 import { ProfilePage } from "../features/profile/ProfilePage";
 import { PublicHomePage } from "../features/public/PublicHomePage";
 import { RecycleBinPage } from "../features/recycle/RecycleBinPage";
+import { AiChatPage } from "../features/ai/AiChatPage";
 
 const router = createBrowserRouter(
   [
@@ -42,6 +43,7 @@ const router = createBrowserRouter(
         { path: "analytics", element: <AnalyticsPage /> },
         { path: "developer/token", element: <TokensPage /> },
         { path: "profile", element: <ProfilePage /> },
+        { path: "ai-chat", element: <AiChatPage /> },
       ],
     },
   ],

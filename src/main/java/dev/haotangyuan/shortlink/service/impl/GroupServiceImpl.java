@@ -52,6 +52,9 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
     @Value("${short-link.group.max-num}")
     private Integer groupMaxNum;
 
+    @Value("${short-link.session-ttl-minutes:30}")
+    private int sessionTtlMinutes;
+
     @Override
     public void saveGroup(String groupName) {
         saveGroup(UserContext.getUsername(), groupName);
@@ -84,7 +87,7 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
             try {
                 String key = String.format(USER_GIDS_KEY, username);
                 stringRedisTemplate.opsForSet().add(key, gid);
-                stringRedisTemplate.expire(key, 30, java.util.concurrent.TimeUnit.MINUTES);
+                stringRedisTemplate.expire(key, sessionTtlMinutes, java.util.concurrent.TimeUnit.MINUTES);
             } catch (Exception e) {
                 log.error("Maintain user_gids on create error, username={}, gid={}", username, gid, e);
             }

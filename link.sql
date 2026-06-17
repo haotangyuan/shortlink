@@ -962,3 +962,30 @@ CREATE TABLE `t_link_first_visit`
     UNIQUE KEY `uniq_url_user` (`full_short_url`, `user`) USING BTREE,
     KEY              `idx_create_time` (`create_time`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='首次访问判重表，利用唯一索引实现高并发去重';
+
+CREATE TABLE `t_ai_session`
+(
+    `id`          bigint(20)   NOT NULL AUTO_INCREMENT COMMENT 'ID',
+    `session_id`  varchar(36)  NOT NULL COMMENT 'UUID 会话标识（前端生成）',
+    `username`    varchar(256) NOT NULL COMMENT '所属用户名',
+    `title`       varchar(100) NOT NULL DEFAULT '新对话' COMMENT '会话标题（首条用户消息截断30字）',
+    `create_time` datetime     DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime     DEFAULT NULL COMMENT '更新时间',
+    `del_flag`    tinyint(1) DEFAULT 0 COMMENT '删除标识 0：未删除 1：已删除',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_session_id` (`session_id`) USING BTREE,
+    KEY `idx_username` (`username`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 对话会话表';
+
+CREATE TABLE `t_ai_message`
+(
+    `id`          bigint(20)  NOT NULL AUTO_INCREMENT COMMENT 'ID',
+    `session_id`  varchar(36) NOT NULL COMMENT '所属会话 UUID',
+    `role`        varchar(16) NOT NULL COMMENT '角色: user / assistant',
+    `content`     text        NOT NULL COMMENT '消息文本内容',
+    `create_time` datetime    DEFAULT NULL COMMENT '创建时间',
+    `update_time` datetime    DEFAULT NULL COMMENT '更新时间',
+    `del_flag`    tinyint(1) DEFAULT 0 COMMENT '删除标识 0：未删除 1：已删除',
+    PRIMARY KEY (`id`),
+    KEY `idx_session_id` (`session_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='AI 对话消息表';

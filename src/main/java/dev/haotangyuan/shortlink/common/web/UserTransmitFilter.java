@@ -30,6 +30,7 @@ import static dev.haotangyuan.shortlink.common.convention.errorcode.BaseErrorCod
 public class UserTransmitFilter implements Filter {
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final int sessionTtlMinutes;
 
     private final Set<String> IGNORE_URI = Set.of(
             "/api/short-link/admin/v1/user/login",
@@ -70,7 +71,7 @@ public class UserTransmitFilter implements Filter {
                             return;
                         }
                         // 仅会话续期，不对 gid 索引续期
-                        stringRedisTemplate.expire(key, 30, TimeUnit.MINUTES);
+                        stringRedisTemplate.expire(key, sessionTtlMinutes, TimeUnit.MINUTES);
                         // 仅刷新该用户 GID 正向索引集合 TTL（不回库、不补全）
                         expireUserGidsTTL(username);
                     } catch (Throwable t) {
@@ -94,7 +95,7 @@ public class UserTransmitFilter implements Filter {
     private void expireUserGidsTTL(String username) {
         String setKey = String.format(USER_GIDS_KEY, username);
         try {
-            stringRedisTemplate.expire(setKey, 30, java.util.concurrent.TimeUnit.MINUTES);
+            stringRedisTemplate.expire(setKey, sessionTtlMinutes, java.util.concurrent.TimeUnit.MINUTES);
         } catch (Throwable t) {
             log.error("Expire user_gids TTL error, username={}", username, t);
         }

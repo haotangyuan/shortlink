@@ -1,6 +1,7 @@
 package dev.haotangyuan.shortlink.mcp;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.json.jackson.JacksonMcpJsonMapper;
 import dev.haotangyuan.shortlink.common.biz.user.UserContext;
 import dev.haotangyuan.shortlink.common.constant.UserConstant;
 import dev.haotangyuan.shortlink.dto.req.LinkCreateReqDTO;
@@ -41,7 +42,7 @@ public class ShortLinkMcpServer {
     public WebMvcSseServerTransportProvider transportProvider() {
         log.info("Creating MCP transport provider via builder. sse={}, message={}", SSE_ENDPOINT, MESSAGE_ENDPOINT);
         return WebMvcSseServerTransportProvider.builder()
-                .objectMapper(objectMapper)
+                .jsonMapper(new JacksonMcpJsonMapper(objectMapper))
                 .sseEndpoint(SSE_ENDPOINT)
                 .messageEndpoint(MESSAGE_ENDPOINT)
                 .keepAliveInterval(Duration.ofSeconds(20))

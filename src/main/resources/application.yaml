@@ -80,3 +80,10 @@ short-link:
         - weibo.com
         - douban.com
         - jianshu.com
+  ai:
+    enabled: true
+    model-name: mimo-v2.5-pro
+    api-key: ${SHORTLINK_AI_API_KEY:}
+    base-url: https://api.xiaomimimo.com/v1
+    max-iters: 10
+  session-ttl-minutes: ${SHORTLINK_SESSION_TTL:30}

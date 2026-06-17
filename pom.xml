@@ -23,8 +23,9 @@
         <jsoup.version>1.15.3</jsoup.version>
         <ip2region.version>2.7.0</ip2region.version>
         <springdoc.version>2.5.0</springdoc.version>
-        <mvc-mcp.version>0.11.3</mvc-mcp.version>
+        <mvc-mcp.version>0.17.0</mvc-mcp.version>
         <caffeine.version>3.1.8</caffeine.version>
+        <agentscope.version>2.0.0-RC3</agentscope.version>
     </properties>
 
     <dependencies>
@@ -115,6 +116,23 @@
         </dependency>
 
         <dependency>
+            <groupId>io.agentscope</groupId>
+            <artifactId>agentscope-harness</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-resolver-dns-native-macos</artifactId>
+            <classifier>osx-aarch_64</classifier>
+        </dependency>
+
+        <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
@@ -189,6 +207,12 @@
                 <groupId>io.modelcontextprotocol.sdk</groupId>
                 <artifactId>mcp-spring-webmvc</artifactId>
                 <version>${mvc-mcp.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.agentscope</groupId>
+                <artifactId>agentscope-harness</artifactId>
+                <version>${agentscope.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

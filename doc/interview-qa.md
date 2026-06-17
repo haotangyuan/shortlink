@@ -576,7 +576,65 @@
 
 ---
 
-## 七、整体架构与综合问题
+## 七、AI 运营助手（AI Copilot）— ReAct Agent 智能分析
+
+### 📝 简历要点
+
+> 基于 AgentScope Java 2.0 构建 ReAct Agent 智能分析助手，设计 6 个领域工具（流量统计、链接对比、异常检测、健康检查等），通过 SSE 流式协议实现前后端实时交互，支持多轮对话上下文与会话持久化，为运营人员提供自然语言驱动的短链数据分析能力。
+
+### ❓ 面试官追问
+
+#### Q1：为什么要做 AI 运营助手？解决什么业务问题？
+
+> **A：** 短链系统积累了大量访问数据（PV/UV、地区、设备、浏览器等维度），但运营人员要看数据必须手动进后台、选分组、选时间、翻图表，效率很低。特别是需要跨链接对比、找异常、查僵尸链接时，操作步骤更多。
+>
+> AI 运营助手的价值是让运营人员**用自然语言直接提问**——"本周流量怎么样"、"有没有异常"、"哪条链接表现最好"——Agent 自动选择工具、查询数据、生成分析报告，把"找数据"变成"问数据"。
+
+#### Q2：ReAct Agent 是什么？为什么不直接调 API？
+
+> **A：** ReAct 是 Reasoning + Acting 的缩写，Agent 不是简单转发请求，而是走一个**推理-行动-观察**的循环：
+>
+> 1. **Reasoning**：分析用户意图，比如"有没有异常流量"→ 需要检测异常
+> 2. **Acting**：选择合适的工具调用，比如 `detect_anomalies` 工具
+> 3. **Observation**：拿到工具返回的原始数据
+> 4. **再 Reasoning**：基于数据生成可读的分析报告和优化建议
+>
+> 如果直接调 API，用户必须知道该调哪个接口、传什么参数。ReAct Agent 相当于加了一层"智能决策层"，理解模糊意图、自动选工具、组合多步查询。比如用户说"分析默认分组"，Agent 可能先调 `list_groups` 找到分组 ID，再调 `get_group_stats` 获取统计数据，最后生成报告——这是两次工具调用的链式推理。
+
+#### Q3：6 个工具是怎么设计的？工具粒度怎么定的？
+
+> **A：** 工具设计遵循"**一个工具解决一类问题**"的原则，分两层：
+>
+> - **StatsTools**（统计查询层）：`list_groups`（分组列表）、`get_group_stats`（分组级聚合统计）、`compare_links`（分组内链接排名对比）、`get_link_stats`（单条链接多维详情）
+> - **InsightTools**（洞察分析层）：`detect_anomalies`（PV 骤降>50%、UV 飙升>100%、连续零流量检测）、`get_link_health`（过期/禁用/僵尸链接诊断）
+>
+> 粒度上，工具参数尽量简单（gid + 日期范围），复杂的数据聚合在工具内部完成。Agent 不需要知道底层是 JOIN 了哪张统计表、走了什么分片——工具封装了领域知识，Agent 只需要选对工具。
+
+#### Q4：SSE 流式传输是怎么实现的？为什么不用 WebSocket？
+
+> **A：** 后端用 Spring 的 `SseEmitter` 实现 Server-Sent Events。Controller 返回 `SseEmitter`，Agent 的响应式流（Reactive Stream）每产生一段文字就 `emitter.send()` 推送一个事件。定义了 5 种事件类型：`session_id`、`text`（文字增量）、`tool_call`（工具调用中）、`done`（完成）、`error`（异常）。
+>
+> 前端没有用浏览器原生 `EventSource`，因为它不支持自定义 Header（无法传 Authorization Token），也不支持取消请求。我手动用 `fetch + ReadableStream` 解析 SSE 协议，逐行读取 `event:` 和 `data:` 字段，实现了完整的 SSE 解析器，支持多行 `data:` 拼接、AbortController 取消。
+>
+> 选 SSE 而非 WebSocket 是因为 AI 对话是**单向流**（服务器→客户端），SSE 天然适合，协议更简单，基于 HTTP 无需额外端口，Spring 原生支持。
+
+#### Q5：多轮对话上下文怎么做的？上下文窗口怎么控制？
+
+> **A：** 会话和消息持久化到两张 MySQL 表（`t_ai_session` + `t_ai_message`），每次发消息前加载该会话**最近 20 条消息**，按角色（user/assistant）转换成 AgentScope 的 `Msg` 列表传给 Agent，Agent 就有了历史上下文。
+>
+> 控制上下文窗口是 20 条（约 10 轮对话），原因：(1) 模型有 Token 上限，历史太长会截断或报错；(2) 运营分析场景通常只关心最近几轮的追问；(3) 减少 Token 消耗降低成本。
+>
+> 会话 ID 由前端用 `crypto.randomUUID()` 生成，首次发消息时后端幂等创建会话记录，首条消息自动截取前 30 字作为会话标题（类似 ChatGPT）。
+
+#### Q6：异步线程里 UserContext 丢失是怎么解决的？
+
+> **A：** 这是个经典问题。用户登录信息存在 `ThreadLocal`（实际是 TransmittableThreadLocal），但 Agent 的响应式流在独立线程执行，ThreadLocal 传不过去，`UserContext.getUsername()` 会返回 null。
+>
+> 解决方案很简单但关键：在 subscribe 回调**之前**（还在 HTTP 请求线程时），把 `username` 捕获到局部变量 `String username = UserContext.getUsername()`，然后在回调里用这个局部变量，而不是再次调用 `UserContext.getUsername()`。这是典型的"提前捕获上下文"模式。
+
+---
+
+## 八、整体架构与综合问题
 
 ### ❓ 面试官追问
 

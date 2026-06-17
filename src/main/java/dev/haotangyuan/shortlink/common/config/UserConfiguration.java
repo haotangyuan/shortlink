@@ -3,6 +3,7 @@ package dev.haotangyuan.shortlink.common.config;
 import dev.haotangyuan.shortlink.common.web.ApiTokenAuthFilter;
 import dev.haotangyuan.shortlink.common.web.UserFlowRiskControlFilter;
 import dev.haotangyuan.shortlink.common.web.UserTransmitFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -21,9 +22,11 @@ public class UserConfiguration {
      * 用户信息传递过滤器
      */
     @Bean
-    public FilterRegistrationBean<UserTransmitFilter> globalUserTransmitFilter(StringRedisTemplate stringRedisTemplate) {
+    public FilterRegistrationBean<UserTransmitFilter> globalUserTransmitFilter(
+            StringRedisTemplate stringRedisTemplate,
+            @Value("${short-link.session-ttl-minutes:30}") int sessionTtlMinutes) {
         FilterRegistrationBean<UserTransmitFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(new UserTransmitFilter(stringRedisTemplate));
+        registration.setFilter(new UserTransmitFilter(stringRedisTemplate, sessionTtlMinutes));
         // 仅拦截管理端路由，避免误伤核心与跳转
         registration.addUrlPatterns("/api/short-link/admin/*");
         registration.setOrder(0);

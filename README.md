@@ -10,6 +10,7 @@
 - **限流保护** - Guava RateLimiter + Redis Lua 滑动窗口
 - **分库分表** - ShardingSphere 16 表水平分片
 - **MCP 集成** - 标准 SSE 端点，支持 AI 工具调用
+- **AI 运营助手** - ReAct Agent 智能分析，SSE 流式对话，多轮上下文，6 个分析工具（流量统计/链接对比/异常检测/健康检查）
 
 ## Tech Stack
 
@@ -23,6 +24,7 @@
 | 缓存 | Caffeine + Redis + Redisson Bloom Filter |
 | 消息队列 | Redis Stream + Consumer Group |
 | 限流 | Guava RateLimiter + Redis Lua 滑动窗口 |
+| AI | AgentScope Java 2.0（ReAct Agent + SSE 流式） |
 | IP 定位 | ip2region |
 | 前端 | React 19 + TypeScript + Vite 8 + Tailwind CSS 4 |
 
@@ -111,6 +113,7 @@ Redis INCRBY → 批量取号段 → 仿射变换 y=(ai+b)mod62^6 → Base62 →
 - 分库分表：ShardingSphere 16 表水平分片
 - 限流流控：Guava RateLimiter + Redis Lua 滑动窗口
 - MCP 集成：标准 SSE 端点，AI Agent 可调用
+- AI 运营助手：AgentScope ReAct Agent + SSE 流式 + 多轮上下文 + 异常检测
 
 > 完整技术亮点见 [doc/intro/技术亮点.md](doc/intro/技术亮点.md)
 
@@ -129,6 +132,8 @@ Redis INCRBY → 批量取号段 → 仿射变换 y=(ai+b)mod62^6 → Base62 →
 | POST | `/api/short-link/admin/v1/user` | 用户注册 |
 | POST | `/api/short-link/admin/v1/user/login` | 用户登录 |
 | GET | `/api/short-link/admin/v1/group` | 分组列表 |
+| GET | `/api/short-link/admin/v1/ai/chat/stream` | AI 对话（SSE 流式） |
+| GET | `/api/short-link/admin/v1/ai/sessions` | AI 会话列表 |
 
 ## 文档目录
 
@@ -153,5 +158,6 @@ src/main/java/dev/haotangyuan/shortlink/
 ├── vo/               # 响应视图对象
 ├── mq/               # Redis Stream 生产者/消费者
 ├── mcp/              # MCP AI 工具集成
+├── ai/               # AI 运营助手（ReAct Agent + 分析工具）
 └── toolkit/          # 工具类（短码生成、IP 地理位置）
 ```

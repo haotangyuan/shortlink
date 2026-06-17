@@ -28,9 +28,9 @@
 
 ### 1.1 概述
 
-ShortLink 是一个高性能短链接服务，核心能力包括短链接创建、302 跳转、分组管理、回收站、访问统计、API Token 和 MCP 工具调用。后端采用 Spring Boot 3 单体架构，数据层通过 ShardingSphere 做水平分片，缓存与消息系统主要依赖 Redis、Redisson、Caffeine 和 Redis Stream；前端是 React 19 + Vite 的 SPA，生产路径挂载在 `/app`。
+ShortLink 是一个高性能短链接服务，核心能力包括短链接创建、302 跳转、分组管理、回收站、访问统计、API Token、MCP 工具调用和 AI 运营助手。后端采用 Spring Boot 3 单体架构，数据层通过 ShardingSphere 做水平分片，缓存与消息系统主要依赖 Redis、Redisson、Caffeine 和 Redis Stream；前端是 React 19 + Vite 的 SPA，生产路径挂载在 `/app`。
 
-项目不是多 Agent 系统。它与 AI/Agent 相关的部分是 MCP Server：通过 `/api/mcp` 暴露标准 SSE 传输，并注册 `createShortLink` 工具，供支持 MCP 的客户端或 Agent 调用。
+项目与 AI/Agent 相关的部分有两层：MCP Server 通过 `/api/mcp` 暴露标准 SSE 传输，注册 `createShortLink` 工具供外部 Agent 调用；AI 运营助手（AI Copilot）基于 AgentScope Java 2.0 的 `ReActAgent` 构建，内置 6 个分析工具，通过 SSE 流式对话为运营人员提供智能数据分析。
 
 ### 1.2 详细说明
 
@@ -45,7 +45,7 @@ ShortLink 是一个高性能短链接服务，核心能力包括短链接创建�
 | 限流 | Guava `RateLimiter` + Redis Lua 滑动窗口 |
 | 统计 | Redis HLL 计算 UV/UIP 增量，MySQL 维度表聚合 |
 | 前端 | React 19、TypeScript、React Router、React Query、Tailwind CSS、Recharts |
-| AI 集成 | MCP Java SDK，SSE endpoint `/api/mcp` |
+| AI 集成 | MCP Java SDK（SSE endpoint `/api/mcp`）+ AgentScope ReAct Agent（AI Copilot） |
 
 ### 1.3 示例
 
@@ -163,6 +163,7 @@ src/main/java/dev/haotangyuan/shortlink
 ├── dto/                 # 请求 DTO 和内部业务 DTO
 ├── initialize/          # Redis Stream Consumer Group 初始化
 ├── mcp/                 # MCP Server 和工具注册
+├── ai/                  # AI 运营助手（AgentScope ReAct Agent + 分析工具）
 ├── mq/                  # Redis Stream 生产、消费、幂等、巡检、清理
 ├── service/             # 业务接口与实现
 ├── toolkit/             # 短码、链接工具、IP 地理位置
@@ -1046,6 +1047,67 @@ McpSchema.Tool createShortLinkTool = McpSchema.Tool.builder()
 ```
 
 新增 MCP 工具时应复用 Service 层，不要在 MCP 配置类中直接写 DB 或 Redis 逻辑。
+
+#### 12.4 AI 运营助手（AI Copilot）
+
+除 MCP Server 外，项目还内置了一个面向运营人员的 AI 分析助手，基于 AgentScope Java 2.0 的 `ReActAgent` 实现。
+
+##### 12.4.1 架构概览
+
+```
+前端 AiCopilot.tsx ──SSE──▶ AiChatController ──▶ ReActAgent
+                                                   │
+                                    ┌──────────────┼──────────────┐
+                                    ▼              ▼              ▼
+                              StatsTools     InsightTools    AiSessionService
+                           (4个统计工具)   (2个洞察工具)    (会话持久化)
+```
+
+##### 12.4.2 已注册工具
+
+| 工具名 | 来源类 | 入参 | 行为 |
+|--------|--------|------|------|
+| `list_groups` | StatsTools | 无 | 列出当前用户所有分组 |
+| `get_group_stats` | StatsTools | gid, startDate, endDate | 分组整体流量统计（PV/UV/UIP + 多维分布） |
+| `compare_links` | StatsTools | gid, startDate, endDate | 分组内链接排名对比（最多 20 条） |
+| `get_link_stats` | StatsTools | fullShortUrl, gid, startDate, endDate | 单条链接详细统计 |
+| `detect_anomalies` | InsightTools | gid, startDate, endDate | 检测 PV 骤降（>50%）、UV 飙升（>100%）、连续零流量 |
+| `get_link_health` | InsightTools | gid | 检查过期链接、禁用链接、零流量僵尸链接 |
+
+##### 12.4.3 SSE 事件协议
+
+`AiChatController` 通过 `SseEmitter` 推送 5 种事件类型：
+
+| event 字段 | data 内容 | 说明 |
+|-----------|-----------|------|
+| `session_id` | UUID 字符串 | 会话标识确认 |
+| `text` | 文字增量片段 | LLM 流式输出的 delta |
+| `tool_call` | 工具名称 | Agent 开始调用工具 |
+| `done` | `[DONE]` | 流结束信号 |
+| `error` | 错误描述 | 异常信息 |
+
+前端使用 `ReadableStream` 手动解析 SSE 协议（非 EventSource），支持自定义 Header 和 AbortController 取消。
+
+##### 12.4.4 会话管理
+
+| 表名 | 说明 | 分表 |
+|------|------|------|
+| `t_ai_session` | 会话记录（sessionId, username, title） | 否 |
+| `t_ai_message` | 消息记录（sessionId, role, content） | 否 |
+
+会话由前端生成 UUID（`crypto.randomUUID()`），后端幂等创建。每次对话加载最近 20 条历史消息构建多轮上下文。首条消息自动截取前 30 字作为会话标题。
+
+##### 12.4.5 配置项
+
+```yaml
+short-link:
+  ai:
+    enabled: true              # 功能总开关
+    model-name: gpt-4o         # 模型名称
+    api-key: sk-xxx            # API Key
+    base-url: https://...      # 模型 API 地址
+    max-iters: 10              # ReAct 最大迭代轮数
+```
 
 ---
 

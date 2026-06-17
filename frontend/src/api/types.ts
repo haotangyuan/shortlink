@@ -157,3 +157,16 @@ export type LinkStatsAccessRecordVO = {
   user?: string;
   createTime?: string;
 };
+
+export type AiSession = {
+  sessionId: string;
+  title: string;
+  createTime: string;
+  updateTime: string;
+};
+
+export type AiMessage = {
+  role: "user" | "assistant";
+  content: string;
+  createTime: string;
+};

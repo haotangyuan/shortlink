@@ -29,6 +29,7 @@ import org.redisson.api.RBloomFilter;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -61,6 +62,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
     private final StringRedisTemplate stringRedisTemplate;
     private final GroupService groupService;
     private final GroupMapper groupMapper;
+
+    @Value("${short-link.session-ttl-minutes:30}")
+    private int sessionTtlMinutes;
 
     private static final String USER_GIDS_REFRESH_LUA_SCRIPT_PATH = "lua/user_gids_refresh.lua";
     private static final DefaultRedisScript<Long> USER_GIDS_REFRESH_SCRIPT;
@@ -151,17 +155,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
                     .findFirst()
                     .map(Object::toString)
                     .orElseThrow(() -> new ClientException("用户登录错误"));
-            stringRedisTemplate.opsForValue().set(String.format(SESSION_KEY, token), userLoginReqDTO.getUsername(), 30, TimeUnit.MINUTES);
-            stringRedisTemplate.expire(USER_LOGIN_KEY + userLoginReqDTO.getUsername(), 30, TimeUnit.MINUTES);
+            stringRedisTemplate.opsForValue().set(String.format(SESSION_KEY, token), userLoginReqDTO.getUsername(), sessionTtlMinutes, TimeUnit.MINUTES);
+            stringRedisTemplate.expire(USER_LOGIN_KEY + userLoginReqDTO.getUsername(), sessionTtlMinutes, TimeUnit.MINUTES);
             // 刷新该用户 GID 正向索引集合 TTL（并补齐集合）
             refreshUserGidsIndex(userLoginReqDTO.getUsername());
             return new UserLoginVO(token);
         }
         // 生成新 token，并同时写入会话映射与兼容的用户名 Hash
         String uuid = UUID.randomUUID().toString();
-        stringRedisTemplate.opsForValue().set(String.format(SESSION_KEY, uuid), userLoginReqDTO.getUsername(), 30, TimeUnit.MINUTES);
+        stringRedisTemplate.opsForValue().set(String.format(SESSION_KEY, uuid), userLoginReqDTO.getUsername(), sessionTtlMinutes, TimeUnit.MINUTES);
         stringRedisTemplate.opsForHash().put(USER_LOGIN_KEY + userLoginReqDTO.getUsername(), uuid, JSON.toJSONString(userDO));
-        stringRedisTemplate.expire(USER_LOGIN_KEY + userLoginReqDTO.getUsername(), 30, TimeUnit.MINUTES);
+        stringRedisTemplate.expire(USER_LOGIN_KEY + userLoginReqDTO.getUsername(), sessionTtlMinutes, TimeUnit.MINUTES);
         // 刷新该用户 GID 正向索引集合 TTL（并补齐集合）
         refreshUserGidsIndex(userLoginReqDTO.getUsername());
         return new UserLoginVO(uuid);
@@ -198,12 +202,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
             List<GroupDO> groups = groupMapper.selectList(queryWrapper);
             String setKey = String.format(USER_GIDS_KEY, username);
             if (groups == null || groups.isEmpty()) {
-                stringRedisTemplate.expire(setKey, 30, TimeUnit.MINUTES);
+                stringRedisTemplate.expire(setKey, sessionTtlMinutes, TimeUnit.MINUTES);
                 return;
             }
             List<String> keys = Collections.singletonList(setKey);
             List<Object> args = new ArrayList<>();
-            args.add(String.valueOf(30 * 60));
+            args.add(String.valueOf(sessionTtlMinutes * 60));
             for (GroupDO groupDO : groups) {
                 args.add(groupDO.getGid());
             }

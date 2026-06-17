@@ -90,6 +90,17 @@ Authorization: Bearer <login-返回的token>
 | POST | `/api/short-link/admin/v1/token` | 创建 Token | ✅ |
 | DELETE | `/api/short-link/admin/v1/token` | 删除 Token | ✅ |
 
+### AI 运营助手
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| GET | `/api/short-link/admin/v1/ai/chat/stream` | AI 对话（SSE 流式） | ✅ |
+| GET | `/api/short-link/admin/v1/ai/sessions` | 会话列表 | ✅ |
+| GET | `/api/short-link/admin/v1/ai/sessions/{sessionId}/messages` | 会话消息 | ✅ |
+| DELETE | `/api/short-link/admin/v1/ai/sessions/{sessionId}` | 删除会话 | ✅ |
+
+> AI 功能需配置 `short-link.ai.enabled=true` 并设置模型参数后生效。
+
 ### MCP
 
 | 方法 | 路径 | 说明 | 认证 |

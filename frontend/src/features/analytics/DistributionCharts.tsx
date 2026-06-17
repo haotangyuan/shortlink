@@ -8,10 +8,11 @@ function nameOf(item: RatioStat) {
   return item.browser ?? item.os ?? item.locale ?? item.uvType ?? item.device ?? item.network ?? "未知";
 }
 
-function RatioList({ data = [] }: { data?: RatioStat[] }) {
+function RatioList({ data = [] }: { data?: RatioStat[] | null }) {
+  const safeData = data ?? [];
   return (
     <div className="grid gap-3">
-      {data.slice(0, 6).map((item) => (
+      {safeData.slice(0, 6).map((item) => (
         <div key={nameOf(item)} className="grid gap-1">
           <div className="flex justify-between text-sm">
             <span className="text-slate-700">{nameOf(item)}</span>
@@ -25,13 +26,13 @@ function RatioList({ data = [] }: { data?: RatioStat[] }) {
           </div>
         </div>
       ))}
-      {!data.length ? <p className="text-sm text-slate-500">暂无数据</p> : null}
+      {!safeData.length ? <p className="text-sm text-slate-500">暂无数据</p> : null}
     </div>
   );
 }
 
-function PieBlock({ title, data = [] }: { title: string; data?: RatioStat[] }) {
-  const chartData = data.map((item) => ({ name: nameOf(item), value: item.cnt }));
+function PieBlock({ title, data = [] }: { title: string; data?: RatioStat[] | null }) {
+  const chartData = (data ?? []).map((item) => ({ name: nameOf(item), value: item.cnt }));
 
   return (
     <Card>

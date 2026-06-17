@@ -8,6 +8,7 @@ import dev.haotangyuan.shortlink.dao.entity.GroupDO;
 import dev.haotangyuan.shortlink.dao.mapper.GroupMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,9 @@ public class GroupOwnershipVerifierImpl implements GroupOwnershipVerifier {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final GroupMapper groupMapper;
+
+    @Value("${short-link.session-ttl-minutes:30}")
+    private int sessionTtlMinutes;
 
     @Override
     public void assertOwnedByCurrentUser(String gid) {
@@ -51,7 +55,7 @@ public class GroupOwnershipVerifierImpl implements GroupOwnershipVerifier {
         }
         try {
             stringRedisTemplate.opsForSet().add(setKey, gid);
-            stringRedisTemplate.expire(setKey, 30, TimeUnit.MINUTES);
+            stringRedisTemplate.expire(setKey, sessionTtlMinutes, TimeUnit.MINUTES);
         } catch (Throwable t) {
             log.error("Redis SADD/EXPIRE user-gids error, username={}, gid= {}", username, gid, t);
         }

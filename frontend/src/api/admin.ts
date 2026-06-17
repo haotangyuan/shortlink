@@ -1,5 +1,7 @@
 import { buildQuery, request } from "./client";
 import type {
+  AiMessage,
+  AiSession,
   GroupSortReq,
   GroupVO,
   LinkCreateReq,
@@ -134,4 +136,10 @@ export const adminApi = {
   updateTokenStatus: (id: number, enable: boolean) =>
     request<void>(`${admin}/token/${id}/status${buildQuery({ enable })}`, { method: "PATCH" }),
   deleteToken: (id: number) => request<void>(`${admin}/token/${id}`, { method: "DELETE" }),
+
+  getAiSessions: () => request<AiSession[]>(`${admin}/ai/sessions`),
+  getAiSessionMessages: (sessionId: string) =>
+    request<AiMessage[]>(`${admin}/ai/sessions/${sessionId}/messages`),
+  deleteAiSession: (sessionId: string) =>
+    request<void>(`${admin}/ai/sessions/${sessionId}`, { method: "DELETE" }),
 };
