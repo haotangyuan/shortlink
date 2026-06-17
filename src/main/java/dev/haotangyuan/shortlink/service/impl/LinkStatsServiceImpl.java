@@ -45,6 +45,9 @@ public class LinkStatsServiceImpl implements LinkStatsService {
 
     @Override
     public LinkStatsVO oneShortLinkStats(LinkStatsReqDTO linkStatsReqDTO) {
+        if (linkStatsReqDTO.getEnableStatus() == null) {
+            linkStatsReqDTO.setEnableStatus(0);
+        }
         groupOwnershipService.assertOwnedByCurrentUser(linkStatsReqDTO.getGid());
         List<LinkAccessStatsDO> statsResult = linkAccessStatsMapper.listStatsByShortLink(linkStatsReqDTO);
         final List<LinkAccessStatsDO> listStatsByShortLink = CollUtil.isEmpty(statsResult) ? Collections.emptyList() : statsResult;

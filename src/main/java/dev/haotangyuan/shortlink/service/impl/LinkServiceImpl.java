@@ -525,13 +525,14 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         for (int i = 0; i < originUrls.size(); i++) {
             LinkCreateReqDTO shortLinkCreateReqDTO = BeanUtil.toBean(linkBatchCreateReqDTO, LinkCreateReqDTO.class);
             shortLinkCreateReqDTO.setOriginUrl(originUrls.get(i));
-            shortLinkCreateReqDTO.setDescribe(describes.get(i));
+            String desc = (describes != null && i < describes.size()) ? describes.get(i) : null;
+            shortLinkCreateReqDTO.setDescribe(desc);
             try {
                 LinkCreateVO shortLink = createLink(shortLinkCreateReqDTO);
                 LinkBaseInfoVO linkBaseInfoRespDTO = LinkBaseInfoVO.builder()
                         .fullShortUrl(shortLink.getFullShortUrl())
                         .originUrl(shortLink.getOriginUrl())
-                        .describe(describes.get(i))
+                        .describe(desc)
                         .build();
                 result.add(linkBaseInfoRespDTO);
             } catch (Exception ex) {
