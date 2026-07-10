@@ -187,7 +187,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         try {
             stringRedisTemplate.delete(key);
         } catch (Throwable t) {
-            log.warn("Logout delete session error, username={}, token={}", username, token, t);
+            log.warn("Logout delete session error, username={}", username, t);
+        }
+        try {
+            stringRedisTemplate.opsForHash().delete(USER_LOGIN_KEY + username, token);
+        } catch (Throwable t) {
+            log.warn("Logout delete token index error, username={}", username, t);
         }
     }
 

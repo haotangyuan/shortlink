@@ -43,7 +43,11 @@ public class AmapClient implements IpGeoClient {
         String localeResultStr = HttpUtil.get(endpoint, localeParamMap, timeout);
         AmapResp r = JSON.parseObject(localeResultStr, AmapResp.class);
         if (r == null || !"1".equals(r.status)) {
-            return null;
+            return GeoInfo.builder()
+                    .country("Unknown")
+                    .province("Unknown")
+                    .city("Unknown")
+                    .build();
         }
         String province = normalize(r.province);
         String city = normalize(r.city);

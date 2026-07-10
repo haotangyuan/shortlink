@@ -38,7 +38,11 @@ public class AiSessionServiceImpl extends ServiceImpl<AiSessionMapper, AiSession
         LambdaQueryWrapper<AiSessionDO> qw = Wrappers.lambdaQuery(AiSessionDO.class)
                 .eq(AiSessionDO::getSessionId, sessionId)
                 .eq(AiSessionDO::getDelFlag, 0);
-        if (baseMapper.selectCount(qw) > 0) {
+        AiSessionDO existingSession = baseMapper.selectOne(qw);
+        if (existingSession != null) {
+            if (!Objects.equals(existingSession.getUsername(), username)) {
+                throw new ClientException("会话不存在");
+            }
             return;
         }
         // 不存在则创建
