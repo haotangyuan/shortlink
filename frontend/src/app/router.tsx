@@ -2,28 +2,26 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { ProtectedRoute } from "../components/layout/ProtectedRoute";
 import { PublicLayout } from "../components/layout/PublicLayout";
-import { LoginPage } from "../features/auth/LoginPage";
-import { RegisterPage } from "../features/auth/RegisterPage";
-import { AnalyticsPage } from "../features/analytics/AnalyticsPage";
-import { DashboardPage } from "../features/dashboard/DashboardPage";
-import { TokensPage } from "../features/developer/TokensPage";
-import { GroupsPage } from "../features/groups/GroupsPage";
-import { LinkCreatePage } from "../features/links/LinkCreatePage";
-import { LinkEditPage } from "../features/links/LinkEditPage";
-import { LinksPage } from "../features/links/LinksPage";
-import { ProfilePage } from "../features/profile/ProfilePage";
-import { PublicHomePage } from "../features/public/PublicHomePage";
-import { RecycleBinPage } from "../features/recycle/RecycleBinPage";
-import { AiChatPage } from "../features/ai/AiChatPage";
 
 const router = createBrowserRouter(
   [
     {
       element: <PublicLayout />,
       children: [
-        { index: true, element: <PublicHomePage /> },
-        { path: "login", element: <LoginPage /> },
-        { path: "register", element: <RegisterPage /> },
+        {
+          index: true,
+          lazy: async () => ({
+            Component: (await import("../features/public/PublicHomePage")).PublicHomePage,
+          }),
+        },
+        {
+          path: "login",
+          lazy: async () => ({ Component: (await import("../features/auth/LoginPage")).LoginPage }),
+        },
+        {
+          path: "register",
+          lazy: async () => ({ Component: (await import("../features/auth/RegisterPage")).RegisterPage }),
+        },
       ],
     },
     {
@@ -34,16 +32,56 @@ const router = createBrowserRouter(
         </ProtectedRoute>
       ),
       children: [
-        { index: true, element: <DashboardPage /> },
-        { path: "groups", element: <GroupsPage /> },
-        { path: "links", element: <LinksPage /> },
-        { path: "links/create", element: <LinkCreatePage /> },
-        { path: "links/edit", element: <LinkEditPage /> },
-        { path: "recycle", element: <RecycleBinPage /> },
-        { path: "analytics", element: <AnalyticsPage /> },
-        { path: "developer/token", element: <TokensPage /> },
-        { path: "profile", element: <ProfilePage /> },
-        { path: "ai-chat", element: <AiChatPage /> },
+        {
+          index: true,
+          lazy: async () => ({
+            Component: (await import("../features/dashboard/DashboardPage")).DashboardPage,
+          }),
+        },
+        {
+          path: "groups",
+          lazy: async () => ({ Component: (await import("../features/groups/GroupsPage")).GroupsPage }),
+        },
+        {
+          path: "links",
+          lazy: async () => ({ Component: (await import("../features/links/LinksPage")).LinksPage }),
+        },
+        {
+          path: "links/create",
+          lazy: async () => ({
+            Component: (await import("../features/links/LinkCreatePage")).LinkCreatePage,
+          }),
+        },
+        {
+          path: "links/edit",
+          lazy: async () => ({ Component: (await import("../features/links/LinkEditPage")).LinkEditPage }),
+        },
+        {
+          path: "recycle",
+          lazy: async () => ({
+            Component: (await import("../features/recycle/RecycleBinPage")).RecycleBinPage,
+          }),
+        },
+        {
+          path: "analytics",
+          lazy: async () => ({
+            Component: (await import("../features/analytics/AnalyticsPage")).AnalyticsPage,
+          }),
+        },
+        {
+          path: "developer/token",
+          lazy: async () => ({
+            Component: (await import("../features/developer/TokensPage")).TokensPage,
+          }),
+        },
+        {
+          path: "profile",
+          lazy: async () => ({ Component: (await import("../features/profile/ProfilePage")).ProfilePage }),
+        },
+        {
+          path: "ai-chat",
+          lazy: async () => ({ Component: (await import("../features/ai/AiChatPage")).AiChatPage }),
+        },
       ],
     },
   ],
