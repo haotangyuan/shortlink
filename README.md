@@ -144,7 +144,7 @@ Redis INCRBY → 批量取号段 → 仿射变换 y=(ai+b)mod62^6 → Base62 →
 | POST | `/api/short-link/admin/v1/user` | 用户注册 |
 | POST | `/api/short-link/admin/v1/user/login` | 用户登录 |
 | GET | `/api/short-link/admin/v1/group` | 分组列表 |
-| GET | `/api/short-link/admin/v1/ai/chat/stream` | AI 对话（SSE 流式） |
+| POST | `/api/short-link/admin/v1/ai/chat/stream` | AI 对话（SSE 流式） |
 | GET | `/api/short-link/admin/v1/ai/sessions` | AI 会话列表 |
 
 ## 文档目录

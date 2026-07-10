@@ -19,10 +19,15 @@ export function streamAiChat(
 ): AbortController {
   const controller = new AbortController();
   const token = getSessionToken();
-  const url = `/api/short-link/admin/v1/ai/chat/stream?message=${encodeURIComponent(message)}&sessionId=${encodeURIComponent(sessionId)}`;
+  const url = "/api/short-link/admin/v1/ai/chat/stream";
 
   fetch(url, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ message, sessionId }),
     signal: controller.signal,
   })
     .then(async (response) => {

@@ -16,6 +16,11 @@ public class LinkPageReqDTO extends PageReqDTO {
     private String gid;
 
     /**
+     * 搜索关键词
+     */
+    private String keyword;
+
+    /**
      * 排序标识
      */
     private String orderTag;

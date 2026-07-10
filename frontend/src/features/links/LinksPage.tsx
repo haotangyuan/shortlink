@@ -23,15 +23,12 @@ export function LinksPage() {
   const groups = groupsQuery.data ?? [];
   const gid = selectedGid || groups[0]?.gid || "";
   const linksQuery = useQuery({
-    queryKey: ["links", gid, page],
+    queryKey: ["links", gid, page, keyword],
     enabled: Boolean(gid),
-    queryFn: () => adminApi.getLinks(gid, page, 10),
+    queryFn: () => adminApi.getLinks(gid, page, 10, undefined, keyword),
   });
   const linkPage = linksQuery.data;
-  const links = (linkPage?.records ?? []).filter((item) => {
-    const value = `${item.fullShortUrl} ${item.originUrl} ${item.describe ?? ""}`.toLowerCase();
-    return value.includes(keyword.toLowerCase());
-  });
+  const links = linkPage?.records ?? [];
 
   const recycleMutation = useMutation({
     mutationFn: (link: LinkPageVO) => adminApi.moveToRecycleBin(link.gid, link.fullShortUrl),

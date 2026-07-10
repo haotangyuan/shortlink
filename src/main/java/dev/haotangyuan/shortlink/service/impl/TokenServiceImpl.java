@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
@@ -30,6 +31,7 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
     private final StringRedisTemplate stringRedisTemplate;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public String createToken(TokenCreateReqDTO req) {
         String username = Objects.requireNonNull(UserContext.getUsername(), "用户未登录");
         String token = java.util.UUID.randomUUID().toString().replace("-", "");
@@ -69,24 +71,20 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteToken(Long id) {
         String username = Objects.requireNonNull(UserContext.getUsername(), "用户未登录");
         TokenDO token = baseMapper.selectById(id);
         if (token == null || !Objects.equals(token.getUsername(), username) || token.getDelFlag() != 0) {
             throw new ClientException("令牌不存在");
         }
-        // 删除 Redis 映射（按哈希键）
-        try {
-            stringRedisTemplate.delete(String.format(API_TOKEN_HASH_KEY, token.getTokenHash()));
-        } catch (Throwable t) {
-            log.error("Delete api-token mapping error", t);
-        }
-        // 逻辑删除
+        deleteRedisMapping(token.getTokenHash());
         token.setDelFlag(1);
         baseMapper.updateById(token);
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateStatus(Long id, Boolean enable) {
         String username = Objects.requireNonNull(UserContext.getUsername(), "用户未登录");
         TokenDO token = baseMapper.selectById(id);
@@ -94,7 +92,6 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
             throw new ClientException("令牌不存在");
         }
         if (Boolean.TRUE.equals(enable)) {
-            // 启用：写入 Redis，若已过期则报错
             if (token.getValidDate() != null && token.getValidDate().getTime() <= System.currentTimeMillis()) {
                 throw new ClientException("令牌已过期");
             }
@@ -102,13 +99,18 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
             baseMapper.updateById(token);
             writeRedisMapping(token.getTokenHash(), username, token.getValidDate());
         } else {
+            deleteRedisMapping(token.getTokenHash());
             token.setEnableStatus(1);
             baseMapper.updateById(token);
-            try {
-                stringRedisTemplate.delete(String.format(API_TOKEN_HASH_KEY, token.getTokenHash()));
-            } catch (Exception e) {
-                log.error("Delete api-token mapping error", e);
-            }
+        }
+    }
+
+    private void deleteRedisMapping(String tokenHash) {
+        try {
+            stringRedisTemplate.delete(String.format(API_TOKEN_HASH_KEY, tokenHash));
+        } catch (Exception e) {
+            log.error("Delete api-token mapping error", e);
+            throw new ClientException("令牌吊销失败");
         }
     }
 

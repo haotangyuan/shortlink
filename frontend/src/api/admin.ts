@@ -53,8 +53,10 @@ export const adminApi = {
     request<LinkCreateVO>(`${admin}/create`, { method: "POST", body: JSON.stringify(body) }),
   updateLink: (body: LinkUpdateReq) =>
     request<void>(`${admin}/update`, { method: "POST", body: JSON.stringify(body) }),
-  getLinks: (gid: string, current = 1, size = 10, orderTag?: string) =>
-    request<PageResult<LinkPageVO>>(`${admin}/page${buildQuery({ gid, current, size, orderTag })}`),
+  getLinks: (gid: string, current = 1, size = 10, orderTag?: string, keyword?: string) =>
+    request<PageResult<LinkPageVO>>(
+      `${admin}/page${buildQuery({ gid, current, size, orderTag, keyword })}`,
+    ),
   getTitle: (url: string) => request<string>(`${admin}/title${buildQuery({ url })}`),
 
   getGroups: () => request<GroupVO[]>(`${admin}/group`),

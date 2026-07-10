@@ -18,6 +18,7 @@ export function AnalyticsPage() {
   const [gid, setGid] = useState(searchParams.get("gid") ?? "");
   const [fullShortUrl, setFullShortUrl] = useState(searchParams.get("fullShortUrl") ?? "");
   const [range, setRange] = useState(initialRange);
+  const [recordsPage, setRecordsPage] = useState(1);
 
   const groupsQuery = useQuery({ queryKey: ["groups"], queryFn: adminApi.getGroups });
   const groups = groupsQuery.data ?? [];
@@ -41,12 +42,19 @@ export function AnalyticsPage() {
         : adminApi.getGroupStats(gid, range.startDate, range.endDate),
   });
   const recordsQuery = useQuery({
-    queryKey: ["stats-records", gid, fullShortUrl, range],
+    queryKey: ["stats-records", gid, fullShortUrl, range, recordsPage],
     enabled: Boolean(gid),
     queryFn: () =>
       fullShortUrl
-        ? adminApi.getLinkAccessRecords(fullShortUrl, gid, range.startDate, range.endDate, 1, 10)
-        : adminApi.getGroupAccessRecords(gid, range.startDate, range.endDate, 1, 10),
+        ? adminApi.getLinkAccessRecords(
+            fullShortUrl,
+            gid,
+            range.startDate,
+            range.endDate,
+            recordsPage,
+            10,
+          )
+        : adminApi.getGroupAccessRecords(gid, range.startDate, range.endDate, recordsPage, 10),
   });
 
   return (
@@ -63,6 +71,7 @@ export function AnalyticsPage() {
               onChange={(event) => {
                 setGid(event.target.value);
                 setFullShortUrl("");
+                setRecordsPage(1);
               }}
             >
               {groups.map((group) => (
@@ -73,7 +82,13 @@ export function AnalyticsPage() {
             </Select>
           </Field>
           <Field label="链接">
-            <Select value={fullShortUrl} onChange={(event) => setFullShortUrl(event.target.value)}>
+            <Select
+              value={fullShortUrl}
+              onChange={(event) => {
+                setFullShortUrl(event.target.value);
+                setRecordsPage(1);
+              }}
+            >
               <option value="">分组汇总</option>
               {links.map((link) => (
                 <option key={link.id} value={link.fullShortUrl}>
@@ -84,7 +99,14 @@ export function AnalyticsPage() {
           </Field>
           <div className="flex flex-wrap items-end gap-2">
             {[1, 7, 30, 90].map((days) => (
-              <Button key={days} variant="secondary" onClick={() => setRange(dateRangeByDays(days))}>
+              <Button
+                key={days}
+                variant="secondary"
+                onClick={() => {
+                  setRange(dateRangeByDays(days));
+                  setRecordsPage(1);
+                }}
+              >
                 {days === 1 ? "今天" : `${days} 天`}
               </Button>
             ))}
@@ -102,7 +124,7 @@ export function AnalyticsPage() {
         uvTypeStats={statsQuery.data?.uvTypeStats}
         topIpStats={statsQuery.data?.topIpStats}
       />
-      <AccessRecordsTable page={recordsQuery.data} />
+      <AccessRecordsTable page={recordsQuery.data} onPageChange={setRecordsPage} />
     </div>
   );
 }

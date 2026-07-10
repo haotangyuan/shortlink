@@ -1,7 +1,9 @@
 package dev.haotangyuan.shortlink.controller.admin;
 
+import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
 import dev.haotangyuan.shortlink.common.convention.result.Result;
 import dev.haotangyuan.shortlink.common.convention.result.Results;
+import dev.haotangyuan.shortlink.dto.req.AiChatReqDTO;
 import dev.haotangyuan.shortlink.service.AiSessionService;
 import dev.haotangyuan.shortlink.vo.AiMessageVO;
 import dev.haotangyuan.shortlink.vo.AiSessionVO;
@@ -62,15 +64,20 @@ public class AiChatController {
      * - event: done       → 对话完成
      * - event: error      → 发生错误
      */
-    @GetMapping(value = "/api/short-link/admin/v1/ai/chat/stream",
+    @PostMapping(value = "/api/short-link/admin/v1/ai/chat/stream",
                 produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamChat(
-            @RequestParam String message,
-            @RequestParam(defaultValue = "default") String sessionId) {
+    public SseEmitter streamChat(@RequestBody AiChatReqDTO request) {
+        String message = request.getMessage();
+        if (message == null || message.isBlank()) {
+            throw new ClientException("消息不能为空");
+        }
+        String sessionId = request.getSessionId() == null || request.getSessionId().isBlank()
+                ? "default"
+                : request.getSessionId();
 
         SseEmitter emitter = new SseEmitter(120_000L); // 2 分钟超时
 
-        log.info("AI Chat 请求: sessionId={}, message={}", sessionId, message);
+        log.info("AI Chat 请求: sessionId={}, messageLength={}", sessionId, message.length());
 
         // 在异步回调前捕获用户名（TransmittableThreadLocal 可能在回调线程中不可用）
         String username;

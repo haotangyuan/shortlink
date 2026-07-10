@@ -50,6 +50,13 @@ public interface LinkMapper extends BaseMapper<LinkDO> {
             WHERE t.gid = #{p.gid}
               AND t.enable_status = 0
               AND t.del_flag = 0
+            <if test="p.keyword != null and p.keyword != ''">
+                AND (
+                    t.full_short_url LIKE CONCAT('%', #{p.keyword}, '%')
+                    OR t.origin_url LIKE CONCAT('%', #{p.keyword}, '%')
+                    OR t.`describe` LIKE CONCAT('%', #{p.keyword}, '%')
+                )
+            </if>
             <choose>
                 <when test="p.orderTag == 'totalPv'">ORDER BY t.total_pv DESC</when>
                 <when test="p.orderTag == 'totalUv'">ORDER BY t.total_uv DESC</when>
