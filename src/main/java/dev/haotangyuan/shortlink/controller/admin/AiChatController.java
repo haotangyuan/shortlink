@@ -17,6 +17,7 @@ import io.agentscope.core.event.TextBlockDeltaEvent;
 import io.agentscope.core.event.ToolCallStartEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -47,7 +48,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AiChatController {
 
-    private final ReActAgent analyticsAgent;
+    private final ObjectProvider<ReActAgent> analyticsAgentProvider;
     private final AiSessionService aiSessionService;
     private final ObjectMapper objectMapper;
 
@@ -78,6 +79,18 @@ public class AiChatController {
         SseEmitter emitter = new SseEmitter(120_000L); // 2 分钟超时
 
         log.info("AI Chat 请求: sessionId={}, messageLength={}", sessionId, message.length());
+
+        ReActAgent analyticsAgent = analyticsAgentProvider.getIfAvailable();
+        if (analyticsAgent == null) {
+            try {
+                emitter.send(SseEmitter.event().name("error")
+                        .data(objectMapper.writeValueAsString("AI 功能未配置")));
+                emitter.complete();
+            } catch (IOException e) {
+                emitter.completeWithError(e);
+            }
+            return emitter;
+        }
 
         // 在异步回调前捕获用户名（TransmittableThreadLocal 可能在回调线程中不可用）
         String username;

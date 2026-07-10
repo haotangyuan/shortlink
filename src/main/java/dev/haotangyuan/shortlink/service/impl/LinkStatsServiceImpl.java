@@ -45,6 +45,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
 
     @Override
     public LinkStatsVO oneShortLinkStats(LinkStatsReqDTO linkStatsReqDTO) {
+        linkStatsReqDTO.setEndDate(normalizeEndDate(linkStatsReqDTO.getEndDate()));
         if (linkStatsReqDTO.getEnableStatus() == null) {
             linkStatsReqDTO.setEnableStatus(0);
         }
@@ -242,14 +243,11 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     @Override
     public IPage<LinkStatsAccessRecordVO> shortLinkStatsAccessRecord(LinkStatsAccessRecordReqDTO linkStatsAccessRecordReqDTO) {
         groupOwnershipService.assertOwnedByCurrentUser(linkStatsAccessRecordReqDTO.getGid());
-        String endDate = linkStatsAccessRecordReqDTO.getEndDate();
-        if (endDate != null && !endDate.contains(" ")) {
-            endDate = endDate + " 23:59:59";
-        }
+        linkStatsAccessRecordReqDTO.setEndDate(normalizeEndDate(linkStatsAccessRecordReqDTO.getEndDate()));
         LambdaQueryWrapper<LinkAccessLogsDO> queryWrapper = Wrappers.lambdaQuery(LinkAccessLogsDO.class)
                 .eq(LinkAccessLogsDO::getFullShortUrl, linkStatsAccessRecordReqDTO.getFullShortUrl())
                 .ge(LinkAccessLogsDO::getCreateTime, linkStatsAccessRecordReqDTO.getStartDate())
-                .le(LinkAccessLogsDO::getCreateTime, endDate)
+                .le(LinkAccessLogsDO::getCreateTime, linkStatsAccessRecordReqDTO.getEndDate())
                 .eq(LinkAccessLogsDO::getDelFlag, 0)
                 .orderByDesc(LinkAccessLogsDO::getCreateTime);
         Page<LinkAccessLogsDO> page = new Page<>(linkStatsAccessRecordReqDTO.getCurrent(), linkStatsAccessRecordReqDTO.getSize());
@@ -267,6 +265,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
 
     @Override
     public LinkStatsVO groupShortLinkStats(GroupStatsReqDTO groupStatsReqDTO) {
+        groupStatsReqDTO.setEndDate(normalizeEndDate(groupStatsReqDTO.getEndDate()));
         groupOwnershipService.assertOwnedByCurrentUser(groupStatsReqDTO.getGid());
         List<LinkAccessStatsDO> listStatsByGroup = Optional.ofNullable(linkAccessStatsMapper.listStatsByGroup(groupStatsReqDTO))
                 .orElse(Collections.emptyList());
@@ -454,10 +453,7 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     @Override
     public IPage<LinkStatsAccessRecordVO> groupShortLinkStatsAccessRecord(GroupStatsAccessRecordReqDTO groupStatsAccessRecordReqDTO) {
         groupOwnershipService.assertOwnedByCurrentUser(groupStatsAccessRecordReqDTO.getGid());
-        String endDate = groupStatsAccessRecordReqDTO.getEndDate();
-        if (endDate != null && !endDate.contains(" ")) {
-            groupStatsAccessRecordReqDTO.setEndDate(endDate + " 23:59:59");
-        }
+        groupStatsAccessRecordReqDTO.setEndDate(normalizeEndDate(groupStatsAccessRecordReqDTO.getEndDate()));
         Page<LinkAccessLogsDO> page = new Page<>(groupStatsAccessRecordReqDTO.getCurrent(), groupStatsAccessRecordReqDTO.getSize());
         IPage<LinkAccessLogsDO> linkAccessLogsDOIPage = linkAccessLogsMapper.selectGroupPage(page, groupStatsAccessRecordReqDTO);
         if (CollUtil.isEmpty(linkAccessLogsDOIPage.getRecords())) {
@@ -470,6 +466,10 @@ public class LinkStatsServiceImpl implements LinkStatsService {
                     return linkStatsAccessRecordRespDTO;
                 });
         return actualResult;
+    }
+
+    private static String normalizeEndDate(String endDate) {
+        return endDate != null && !endDate.contains(" ") ? endDate + " 23:59:59" : endDate;
     }
 
     private static double calculateRatio(int cnt, int sum) {

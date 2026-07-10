@@ -92,7 +92,7 @@ export type PageResult<T> = {
 };
 
 export type TokenVO = {
-  id: number;
+  id: string;
   tokenMasked: string;
   name: string;
   enableStatus: number;

@@ -19,7 +19,7 @@ LinkPilot 是一个基于 Spring Boot 3、Redis、MySQL、ShardingSphere、Caffe
 - **分布式短码生成：** 使用 Redis `INCRBY` 批量分配号段，本地原子递增和异步预取减少分配请求；通过仿射置换与定长 Base62 编码生成不可顺序猜测的 6/7 位短码。
 - **高并发跳转链路：** 构建 Caffeine、Redis、短码快速否定、Redis Bloom Filter、空值缓存与数据库的多级查询链路；对回源使用按短链键的本地锁和双重检查，避免缓存击穿。
 - **可靠异步统计：** 跳转数据写入 Redis Stream，由消费者组异步处理；以幂等状态、数据库消息唯一键和业务成功后 ACK 控制重复消费，并通过 `XAUTOCLAIM` 定时补偿 Pending 消息；使用 HyperLogLog 记录 UV/UIP。
-- **分层流量保护：** 使用 Guava `RateLimiter` 对创建、跳转和统计接口实施进程内限流，并以 Redis + Lua 实现用户维度的滑动窗口风控。
+- **分层流量保护：** 使用 Guava `RateLimiter` 对创建、跳转和统计接口实施进程内限流，并以 Redis + Lua 对已登录用户的写操作实施滑动窗口风控，避免高频变更拖垮服务且不影响正常查询。
 - **AI 与开放集成：** 基于 AgentScope ReAct Agent 提供流量查询、分组统计、链接对比、异常检测和失效诊断等运营分析能力；通过 MCP SSE 端点向外部智能体提供短链创建工具。
 
 > 维护规则：仅描述仓库中已落地且可验证的能力；引入、删除或实质改变上述能力时，同步更新本节。性能数据必须注明压测条件和结果来源。
@@ -69,6 +69,13 @@ mysql -u root -p db_shortlink < link.sql
 ```bash
 mvn clean package -DskipTests
 java -jar target/shortlink-all-1.0-SNAPSHOT.jar
+```
+
+本地开发需要加载 `application-local.yaml`（本地数据库与 AI 配置）时：
+
+```bash
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+# 或：java -jar target/shortlink-all-1.0-SNAPSHOT.jar --spring.profiles.active=local
 ```
 
 或 Docker：

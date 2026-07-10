@@ -160,9 +160,7 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
                 .collect(Collectors.toMap(GroupLinkCountQueryVO::getGid, Function.identity()));
         groupRespDTOList.forEach(each -> {
             GroupLinkCountQueryVO count = countMap.get(each.getGid());
-            if (count != null) {
-                each.setLinkCount(count.getLinkCount());
-            }
+            each.setLinkCount(count == null ? 0 : count.getLinkCount());
         });
         return groupRespDTOList;
     }

@@ -135,9 +135,9 @@ export const adminApi = {
   getTokens: () => request<TokenVO[]>(`${admin}/token`),
   createToken: (body: TokenCreateReq) =>
     request<string>(`${admin}/token`, { method: "POST", body: JSON.stringify(body) }),
-  updateTokenStatus: (id: number, enable: boolean) =>
+  updateTokenStatus: (id: string, enable: boolean) =>
     request<void>(`${admin}/token/${id}/status${buildQuery({ enable })}`, { method: "PATCH" }),
-  deleteToken: (id: number) => request<void>(`${admin}/token/${id}`, { method: "DELETE" }),
+  deleteToken: (id: string) => request<void>(`${admin}/token/${id}`, { method: "DELETE" }),
 
   getAiSessions: () => request<AiSession[]>(`${admin}/ai/sessions`),
   getAiSessionMessages: (sessionId: string) =>

@@ -54,6 +54,7 @@ public class RecycleBinServiceImpl extends ServiceImpl<LinkMapper, LinkDO> imple
                 .eq(LinkDO::getDelFlag, 0);
         LinkDO linkDO = LinkDO.builder()
                 .enableStatus(1)
+                .delTime(System.currentTimeMillis())
                 .build();
         baseMapper.update(linkDO, updateWrapper);
         stringRedisTemplate.delete(

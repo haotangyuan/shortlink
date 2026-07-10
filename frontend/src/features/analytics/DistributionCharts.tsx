@@ -42,7 +42,7 @@ function PieBlock({ title, data = [] }: { title: string; data?: RatioStat[] | nu
       <CardContent>
         {chartData.length ? (
           <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 320, height: 192 }}>
               <PieChart>
                 <Pie data={chartData} dataKey="value" nameKey="name" outerRadius={72}>
                   {chartData.map((entry, index) => (

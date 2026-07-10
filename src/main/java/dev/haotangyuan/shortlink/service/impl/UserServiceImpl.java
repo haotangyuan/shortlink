@@ -129,6 +129,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
         LambdaUpdateWrapper<UserDO> updateWrapper = Wrappers.lambdaUpdate(UserDO.class)
                 .eq(UserDO::getUsername, userUpdateReqDTO.getUsername());
         UserDO userDO = BeanUtil.toBean(userUpdateReqDTO, UserDO.class);
+        if (userDO.getPhone() != null && userDO.getPhone().contains("*")) {
+            userDO.setPhone(null);
+        }
         if (userUpdateReqDTO.getPassword() != null && !userUpdateReqDTO.getPassword().isEmpty()) {
             userDO.setPassword(HashUtil.encryptByBcrypt(userUpdateReqDTO.getPassword()));
         }

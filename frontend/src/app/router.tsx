@@ -3,10 +3,15 @@ import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { ProtectedRoute } from "../components/layout/ProtectedRoute";
 import { PublicLayout } from "../components/layout/PublicLayout";
 
+function RouteFallback() {
+  return <div className="grid min-h-64 place-items-center text-sm text-slate-500">正在加载页面...</div>;
+}
+
 const router = createBrowserRouter(
   [
     {
       element: <PublicLayout />,
+      HydrateFallback: RouteFallback,
       children: [
         {
           index: true,
@@ -31,6 +36,7 @@ const router = createBrowserRouter(
           <DashboardLayout />
         </ProtectedRoute>
       ),
+      HydrateFallback: RouteFallback,
       children: [
         {
           index: true,

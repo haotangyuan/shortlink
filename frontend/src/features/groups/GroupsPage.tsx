@@ -109,16 +109,38 @@ export function GroupsPage() {
                       <td className="py-3 text-slate-500">{group.linkCount}</td>
                       <td className="py-3">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" className="h-8 w-8 px-0" onClick={() => move(index, -1)}>
+                          <Button
+                            variant="ghost"
+                            className="h-8 w-8 px-0"
+                            aria-label={`${group.name}上移`}
+                            disabled={index === 0}
+                            onClick={() => move(index, -1)}
+                          >
                             <ArrowUp className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" className="h-8 w-8 px-0" onClick={() => move(index, 1)}>
+                          <Button
+                            variant="ghost"
+                            className="h-8 w-8 px-0"
+                            aria-label={`${group.name}下移`}
+                            disabled={index === groups.length - 1}
+                            onClick={() => move(index, 1)}
+                          >
                             <ArrowDown className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" className="h-8 w-8 px-0" onClick={() => rename(group)}>
+                          <Button
+                            variant="ghost"
+                            className="h-8 w-8 px-0"
+                            aria-label={`重命名${group.name}`}
+                            onClick={() => rename(group)}
+                          >
                             <Pencil className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" className="h-8 w-8 px-0" onClick={() => remove(group)}>
+                          <Button
+                            variant="ghost"
+                            className="h-8 w-8 px-0"
+                            aria-label={`删除${group.name}`}
+                            onClick={() => remove(group)}
+                          >
                             <Trash2 className="h-4 w-4 text-red-600" />
                           </Button>
                         </div>

@@ -86,20 +86,21 @@ public class LinkUtil {
      * @return 操作系统
      */
     public static String getOs(HttpServletRequest request) {
-        String userAgent = request.getHeader("User-Agent").toLowerCase();
-        if (userAgent == null) {
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent == null || userAgent.isBlank()) {
             return "Unknown";
         }
-        if (userAgent.contains("windows")) {
+        userAgent = userAgent.toLowerCase(Locale.ROOT);
+        if (userAgent.contains("android")) {
+            return "Android";
+        } else if (userAgent.contains("iphone") || userAgent.contains("ipad") || userAgent.contains("ipod")) {
+            return "iOS";
+        } else if (userAgent.contains("windows")) {
             return "Windows";
         } else if (userAgent.contains("mac")) {
             return "Mac";
         } else if (userAgent.contains("x11") || userAgent.contains("linux")) {
             return "Unix";
-        } else if (userAgent.contains("android")) {
-            return "Android";
-        } else if (userAgent.contains("iphone") || userAgent.contains("ipad")) {
-            return "iOS";
         } else {
             return "Unknown";
         }
@@ -112,22 +113,23 @@ public class LinkUtil {
      * @return 浏览器
      */
     public static String getBrowser(HttpServletRequest request) {
-        String userAgent = request.getHeader("User-Agent").toLowerCase();
-        if (userAgent == null) {
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent == null || userAgent.isBlank()) {
             return "Unknown";
         }
+        userAgent = userAgent.toLowerCase(Locale.ROOT);
         if (userAgent.contains("edg")) {
             return "Edge";
         } else if (userAgent.contains("msie") || userAgent.contains("trident")) {
             return "Internet Explorer";
+        } else if (userAgent.contains("opera") || userAgent.contains("opr")) {
+            return "Opera";
         } else if (userAgent.contains("chrome")) {
             return "Chrome";
         } else if (userAgent.contains("safari") && !userAgent.contains("chrome")) {
             return "Safari";
         } else if (userAgent.contains("firefox")) {
             return "Firefox";
-        } else if (userAgent.contains("opera") || userAgent.contains("opr")) {
-            return "Opera";
         } else {
             return "Unknown";
         }
@@ -140,10 +142,11 @@ public class LinkUtil {
      * @return 设备类型
      */
     public static String getDevice(HttpServletRequest request) {
-        String userAgent = request.getHeader("User-Agent").toLowerCase();
-        if (userAgent == null) {
+        String userAgent = request.getHeader("User-Agent");
+        if (userAgent == null || userAgent.isBlank()) {
             return "Unknown";
         }
+        userAgent = userAgent.toLowerCase(Locale.ROOT);
         if (userAgent.contains("mobile")) {
             return "Mobile";
         } else {

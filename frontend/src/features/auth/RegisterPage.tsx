@@ -58,25 +58,42 @@ export function RegisterPage() {
         <CardContent>
           <form className="grid gap-4" onSubmit={submit}>
             <Field label="用户名">
-              <Input value={form.username} onChange={(event) => update("username", event.target.value)} />
+              <Input
+                value={form.username}
+                autoComplete="username"
+                onChange={(event) => update("username", event.target.value)}
+              />
             </Field>
             <Field label="密码">
               <Input
                 type="password"
                 value={form.password}
+                autoComplete="new-password"
                 onChange={(event) => update("password", event.target.value)}
               />
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="真实姓名">
-                <Input value={form.realName} onChange={(event) => update("realName", event.target.value)} />
+                <Input
+                  value={form.realName}
+                  autoComplete="name"
+                  onChange={(event) => update("realName", event.target.value)}
+                />
               </Field>
               <Field label="手机号">
-                <Input value={form.phone} onChange={(event) => update("phone", event.target.value)} />
+                <Input
+                  value={form.phone}
+                  autoComplete="tel"
+                  onChange={(event) => update("phone", event.target.value)}
+                />
               </Field>
             </div>
             <Field label="邮箱">
-              <Input value={form.mail} onChange={(event) => update("mail", event.target.value)} />
+              <Input
+                value={form.mail}
+                autoComplete="email"
+                onChange={(event) => update("mail", event.target.value)}
+              />
             </Field>
             {error ? <p className="text-sm text-red-600">{error}</p> : null}
             <Button type="submit" disabled={loading}>

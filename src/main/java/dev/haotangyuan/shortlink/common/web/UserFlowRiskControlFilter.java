@@ -7,6 +7,7 @@ import dev.haotangyuan.shortlink.common.config.UserFlowRiskControlConfiguration;
 import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
 import dev.haotangyuan.shortlink.common.convention.result.Results;
 import jakarta.servlet.*;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -18,7 +19,6 @@ import org.springframework.scripting.support.ResourceScriptSource;
 
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Optional;
 
 import static dev.haotangyuan.shortlink.common.constant.UserConstant.PUBLIC_USERNAME;
 import static dev.haotangyuan.shortlink.common.convention.errorcode.BaseErrorCode.FLOW_LIMIT_ERROR;
@@ -47,7 +47,12 @@ public class UserFlowRiskControlFilter implements Filter {
     @SneakyThrows
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain) throws IOException, ServletException {
-        String username = Optional.ofNullable(UserContext.getUsername()).orElse(PUBLIC_USERNAME);
+        String username = UserContext.getUsername();
+        String method = ((HttpServletRequest) request).getMethod();
+        if (isReadOnly(method) || username == null || PUBLIC_USERNAME.equals(username)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
         Long result;
         try {
             result = stringRedisTemplate.execute(REDIS_SCRIPT, Lists.newArrayList(username), String.valueOf(userFlowRiskControlConfiguration.getTimeWindow()));
@@ -61,6 +66,12 @@ public class UserFlowRiskControlFilter implements Filter {
             return;
         }
         filterChain.doFilter(request, response);
+    }
+
+    private boolean isReadOnly(String method) {
+        return "GET".equalsIgnoreCase(method)
+                || "HEAD".equalsIgnoreCase(method)
+                || "OPTIONS".equalsIgnoreCase(method);
     }
 
     private void tooMany(HttpServletResponse resp) throws IOException {

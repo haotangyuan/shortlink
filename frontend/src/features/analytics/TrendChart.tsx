@@ -20,7 +20,7 @@ export function TrendChart({ data = [] }: { data?: LinkStatsDailyVO[] }) {
       <CardContent>
         {data.length ? (
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 640, height: 288 }}>
               <LineChart data={data}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />

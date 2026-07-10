@@ -208,6 +208,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void updateLink(LinkUpdateReqDTO linkUpdateReqDTO) {
+        linkUpdateReqDTO.setFullShortUrl(normalizeFullShortUrl(linkUpdateReqDTO.getFullShortUrl()));
         // 鉴权：旧、新分组均需属于当前用户
         groupOwnershipService.assertOwnedByCurrentUser(linkUpdateReqDTO.getOriginGid());
         groupOwnershipService.assertOwnedByCurrentUser(linkUpdateReqDTO.getGid());
@@ -405,7 +406,8 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             Date todayDate = Date.from(today.atStartOfDay(shanghaiZone).toInstant());
 
             // 从 stats 表查询今日 PV 总数
-            return linkAccessStatsMapper.sumTodayPvByShortUrl(fullShortUrl, todayDate);
+            return Optional.ofNullable(linkAccessStatsMapper.sumTodayPvByShortUrl(fullShortUrl, todayDate))
+                    .orElse(0);
         } catch (Exception e) {
             log.warn("Failed to get today PV from stats for {}, returning 0", fullShortUrl, e);
             return 0;
@@ -600,6 +602,16 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         if (!details.contains(domain)) {
             throw new ClientException("演示环境为避免恶意攻击，请生成以下网站跳转链接：" + gotoDomainWhiteListConfiguration.getNames());
         }
+    }
+
+    private String normalizeFullShortUrl(String fullShortUrl) {
+        if (StrUtil.startWithIgnoreCase(fullShortUrl, "http://")) {
+            return fullShortUrl.substring(7);
+        }
+        if (StrUtil.startWithIgnoreCase(fullShortUrl, "https://")) {
+            return fullShortUrl.substring(8);
+        }
+        return fullShortUrl;
     }
 
     private void doRedirect(String targetUrl, String fullShortUrl, ServletRequest request, ServletResponse response) throws IOException {

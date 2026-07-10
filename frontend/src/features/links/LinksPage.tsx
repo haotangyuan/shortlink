@@ -10,6 +10,7 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { useToast } from "../../components/ui/Toast";
+import { toAbsoluteShortUrl } from "../../lib/shortUrl";
 
 export function LinksPage() {
   const queryClient = useQueryClient();
@@ -94,11 +95,13 @@ export function LinksPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {links.map((link) => (
+                    {links.map((link) => {
+                      const absoluteShortUrl = toAbsoluteShortUrl(link.fullShortUrl);
+                      return (
                       <tr key={link.id} className="border-b border-slate-100">
                         <td className="py-3">
                           <div className="max-w-[240px] truncate font-medium text-slate-950">
-                            {link.fullShortUrl}
+                            {absoluteShortUrl}
                           </div>
                           <div className="mt-1 text-xs text-slate-500">{link.describe || "未填写描述"}</div>
                         </td>
@@ -111,29 +114,34 @@ export function LinksPage() {
                         <td className="py-3 text-slate-500">{link.validDate || "按服务端规则"}</td>
                         <td className="py-3">
                           <div className="flex justify-end gap-2">
-                            <CopyButton text={link.fullShortUrl} label="复制" />
-                            <a href={link.fullShortUrl} target="_blank" rel="noreferrer">
-                              <Button variant="ghost" className="h-10 w-10 px-0">
+                            <CopyButton text={absoluteShortUrl} label="复制" />
+                            <a href={absoluteShortUrl} target="_blank" rel="noreferrer">
+                              <Button
+                                variant="ghost"
+                                className="h-10 w-10 px-0"
+                                aria-label="打开短链接"
+                              >
                                 <ExternalLink className="h-4 w-4" />
                               </Button>
                             </a>
                             <Link
                               to={`/dashboard/links/edit?gid=${encodeURIComponent(link.gid)}&fullShortUrl=${encodeURIComponent(link.fullShortUrl)}`}
                             >
-                              <Button variant="ghost" className="h-10 w-10 px-0">
+                              <Button variant="ghost" className="h-10 w-10 px-0" aria-label="编辑短链接">
                                 <Pencil className="h-4 w-4" />
                               </Button>
                             </Link>
                             <Link
                               to={`/dashboard/analytics?gid=${encodeURIComponent(link.gid)}&fullShortUrl=${encodeURIComponent(link.fullShortUrl)}`}
                             >
-                              <Button variant="ghost" className="h-10 w-10 px-0">
+                              <Button variant="ghost" className="h-10 w-10 px-0" aria-label="查看访问分析">
                                 <BarChart3 className="h-4 w-4" />
                               </Button>
                             </Link>
                             <Button
                               variant="ghost"
                               className="h-10 w-10 px-0"
+                              aria-label="移入回收站"
                               onClick={() => recycleMutation.mutate(link)}
                             >
                               <Recycle className="h-4 w-4 text-red-600" />
@@ -141,7 +149,8 @@ export function LinksPage() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

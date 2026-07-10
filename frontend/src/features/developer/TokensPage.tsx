@@ -37,7 +37,7 @@ export function TokensPage() {
     },
   });
   const statusMutation = useMutation({
-    mutationFn: ({ id, enable }: { id: number; enable: boolean }) => adminApi.updateTokenStatus(id, enable),
+    mutationFn: ({ id, enable }: { id: string; enable: boolean }) => adminApi.updateTokenStatus(id, enable),
     onSuccess: () => void invalidate(),
   });
   const deleteMutation = useMutation({

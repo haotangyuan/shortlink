@@ -37,7 +37,7 @@ export function ProfilePage() {
         username: form.username,
         password: form.password || undefined,
         realName: form.realName.trim() || undefined,
-        phone: form.phone.trim() || undefined,
+        phone: form.phone.includes("*") ? undefined : form.phone.trim() || undefined,
         mail: form.mail.trim() || undefined,
       }),
     onSuccess: async () => {

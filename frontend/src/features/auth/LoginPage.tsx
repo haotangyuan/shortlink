@@ -46,13 +46,18 @@ export function LoginPage() {
         <CardContent>
           <form className="grid gap-4" onSubmit={submit}>
             <Field label="用户名">
-              <Input value={username} onChange={(event) => setUsername(event.target.value)} />
+              <Input
+                value={username}
+                autoComplete="username"
+                onChange={(event) => setUsername(event.target.value)}
+              />
             </Field>
             <Field label="密码">
               <div className="relative">
                 <Input
                   type={showPassword ? "text" : "password"}
                   value={password}
+                  autoComplete="current-password"
                   onChange={(event) => setPassword(event.target.value)}
                   className="pr-11"
                 />
