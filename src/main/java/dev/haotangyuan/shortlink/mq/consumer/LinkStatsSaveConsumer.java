@@ -64,7 +64,7 @@ public class LinkStatsSaveConsumer implements StreamListener<String, MapRecord<S
         } catch (DuplicateKeyException ex) {
             // messageId 唯一索引冲突 = 已处理过，直接视为成功
             log.info("Message already processed (DB duplicate key), skip: {}", id);
-        } catch (Throwable ex) {
+        } catch (RuntimeException ex) {
             // 业务失败，删除幂等标记，不 ACK
             messageQueueIdempotentHandler.release(id.toString());
             log.error("业务逻辑执行失败，消息将重试: {}", id, ex);

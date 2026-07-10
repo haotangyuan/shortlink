@@ -21,6 +21,8 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -32,6 +34,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.LOCK_GID_UPDATE_KEY;
+import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.STATS_HLL_DELTA_KEY;
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.STATS_UIP_ACTIVE_KEY;
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.STATS_UIP_HLL_KEY;
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.STATS_UV_ACTIVE_KEY;
@@ -68,6 +71,8 @@ public class LinkStatsSaver {
             .build();
 
     private static final String HLL_COUNT_ADD_DELTA_LUA = "lua/hll_count_add_delta.lua";
+    private static final int HLL_TTL_SECONDS = 86_400;
+    private static final int HLL_DELTA_TTL_SECONDS = 7 * 86_400;
 
     @PostConstruct
     public void init() {
@@ -108,26 +113,30 @@ public class LinkStatsSaver {
         String uipKey = String.format(STATS_UIP_HLL_KEY, v, fullShortUrl);
         String uvActiveKey = String.format(STATS_UV_ACTIVE_KEY, v);
         String uipActiveKey = String.format(STATS_UIP_ACTIVE_KEY, v);
-
-        // TTL 24小时（24 * 3600 = 86400秒）
-        int ttlSeconds = 86400;
+        String uvDeltaKey = String.format(STATS_HLL_DELTA_KEY, messageId, "uv");
+        String uipDeltaKey = String.format(STATS_HLL_DELTA_KEY, messageId, "uip");
 
         // 计算 UV delta
         Long uvDelta = stringRedisTemplate.execute(hllCountAddDeltaScript,
-                Arrays.asList(uvKey, uvActiveKey),
+                Arrays.asList(uvKey, uvActiveKey, uvDeltaKey),
                 statsRecord.getUv(),
                 fullShortUrl,
-                String.valueOf(ttlSeconds));
+                String.valueOf(HLL_TTL_SECONDS),
+                String.valueOf(HLL_DELTA_TTL_SECONDS));
 
         // 计算 UIP delta
         Long uipDelta = stringRedisTemplate.execute(hllCountAddDeltaScript,
-                Arrays.asList(uipKey, uipActiveKey),
+                Arrays.asList(uipKey, uipActiveKey, uipDeltaKey),
                 statsRecord.getUip(),
                 fullShortUrl,
-                String.valueOf(ttlSeconds));
+                String.valueOf(HLL_TTL_SECONDS),
+                String.valueOf(HLL_DELTA_TTL_SECONDS));
 
         // 查询 IP 地理位置
         GeoInfo geoInfo = ipGeoClient.query(statsRecord.getUip());
+        if (geoInfo == null) {
+            geoInfo = GeoInfo.unknown();
+        }
 
         // 1. 首访判定（判重表）
         boolean isFirstVisit = false;
@@ -222,6 +231,27 @@ public class LinkStatsSaver {
 
         // 9. 更新 link 表统计
         updateLinkAgg(fullShortUrl, uvDeltaInt, uipDeltaInt);
+        cleanupDeltaKeysAfterCommit(Arrays.asList(uvDeltaKey, uipDeltaKey));
+    }
+
+    private void cleanupDeltaKeysAfterCommit(java.util.List<String> deltaKeys) {
+        Runnable cleanup = () -> {
+            try {
+                stringRedisTemplate.delete(deltaKeys);
+            } catch (Exception ex) {
+                log.warn("Failed to clean HLL delta keys after commit: {}", ex.getMessage());
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    cleanup.run();
+                }
+            });
+        } else {
+            cleanup.run();
+        }
     }
 
     // 乐观更新 + 回源重试

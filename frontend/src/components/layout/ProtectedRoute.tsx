@@ -9,6 +9,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    setVerified(false);
     async function verify() {
       if (isAuthenticated) {
         await checkAuth();
@@ -17,8 +18,7 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     }
     verify();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [checkAuth, isAuthenticated]);
 
   if (!verified) return null;
 

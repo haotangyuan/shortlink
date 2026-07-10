@@ -10,6 +10,7 @@ import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -20,6 +21,7 @@ import dev.haotangyuan.shortlink.common.config.GotoDomainWhiteListConfiguration;
 import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
 import dev.haotangyuan.shortlink.common.convention.exception.ServiceException;
 import dev.haotangyuan.shortlink.common.enums.ValidDateTypeEnum;
+import dev.haotangyuan.shortlink.dao.entity.LinkAccessStatsDO;
 import dev.haotangyuan.shortlink.dao.entity.LinkDO;
 import dev.haotangyuan.shortlink.dao.entity.LinkGotoDO;
 import dev.haotangyuan.shortlink.dao.mapper.LinkAccessStatsMapper;
@@ -44,7 +46,6 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import com.github.benmanes.caffeine.cache.Cache;
 import org.redisson.api.RBloomFilter;
@@ -62,6 +63,9 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -98,9 +102,11 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     private final Cache<String, ReentrantLock> redirectLockCache;
     // 短链接跳转目标 URL 本地缓存（减少 Redis 网络往返）
     private final Cache<String, String> redirectCache;
+    private final TransactionTemplate transactionTemplate;
 
     private DefaultRedisScript<List> hllBatchScript;
     private static final String HLL_PFCOUNT_BATCH_LUA = "lua/hll_pfcount_batch.lua";
+    private static final int MAX_BATCH_CREATE_SIZE = 100;
 
     @Value("${short-link.domain.default}")
     private String createLinkDefaultDomain;
@@ -124,31 +130,14 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             groupOwnershipService.assertOwnedByCurrentUser(linkCreateReqDTO.getGid());
         }
         verificationWhitelist(linkCreateReqDTO.getOriginUrl());
+        validateDescription(linkCreateReqDTO.getDescribe());
 
         // 设置默认值
         if (linkCreateReqDTO.getCreatedType() == null) {
             linkCreateReqDTO.setCreatedType(0);
         }
-        if (linkCreateReqDTO.getValidDateType() == null) {
-            linkCreateReqDTO.setValidDateType(ValidDateTypeEnum.CUSTOM.getType());
-        }
-
-        // 处理有效期逻辑，限制最大3天
-        Date now = new Date();
-        Date maxValidDate = DateUtil.offsetDay(now, 3);
-
-        if (linkCreateReqDTO.getValidDate() == null) {
-            // 如果没有传入validDate，默认设置为1天后
-            linkCreateReqDTO.setValidDate(DateUtil.offsetDay(now, 1));
-        } else if (linkCreateReqDTO.getValidDate().after(maxValidDate)) {
-            // 如果传入的validDate超过3天，修正为3天
-            linkCreateReqDTO.setValidDate(maxValidDate);
-        }
-
-        // 确保不是永久有效
-        if (linkCreateReqDTO.getValidDateType() == ValidDateTypeEnum.PERMANENT.getType()) {
-            linkCreateReqDTO.setValidDateType(ValidDateTypeEnum.CUSTOM.getType());
-        }
+        linkCreateReqDTO.setValidDateType(ValidDateTypeEnum.CUSTOM.getType());
+        linkCreateReqDTO.setValidDate(normalizeValidDate(linkCreateReqDTO.getValidDate()));
 
         String shortCode = ShortCodeUtil.next();
         String fullShortUrl = StrBuilder.create(createLinkDefaultDomain)
@@ -177,8 +166,9 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                 .gid(linkCreateReqDTO.getGid())
                 .build();
         try {
-            baseMapper.insert(shortLinkDO);
-            linkGotoMapper.insert(linkGotoDO);
+            if (baseMapper.insert(shortLinkDO) < 1 || linkGotoMapper.insert(linkGotoDO) < 1) {
+                throw new ServiceException("短链接创建失败，请稍后重试");
+            }
         } catch (DuplicateKeyException ex) {
             // 首先判断是否存在布隆过滤器，如果不存在直接新增
             if (!shortUriCreateCachePenetrationBloomFilter.contains(fullShortUrl)) {
@@ -186,18 +176,8 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             }
             throw new ServiceException(String.format("短链接：%s 生成重复", fullShortUrl));
         }
-        // 缓存预热
-        stringRedisTemplate.opsForValue().set(
-                String.format(GOTO_SHORT_LINK_KEY, fullShortUrl),
-                linkCreateReqDTO.getOriginUrl(),
-                LinkUtil.getLinkCacheValidTime(linkCreateReqDTO.getValidDate()), TimeUnit.MILLISECONDS
-        );
-        try {
-            stringRedisTemplate.delete(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl));
-        } catch (Throwable t) {
-            log.warn("Clear negative cache on create error, fullShortUrl={}", fullShortUrl, t);
-        }
         shortUriCreateCachePenetrationBloomFilter.add(fullShortUrl);
+        warmRedirectCacheAfterCommit(fullShortUrl, linkCreateReqDTO.getOriginUrl(), linkCreateReqDTO.getValidDate());
         return LinkCreateVO.builder()
                 .fullShortUrl("http://" + shortLinkDO.getFullShortUrl())
                 .originUrl(linkCreateReqDTO.getOriginUrl())
@@ -209,6 +189,9 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     @Override
     public void updateLink(LinkUpdateReqDTO linkUpdateReqDTO) {
         linkUpdateReqDTO.setFullShortUrl(normalizeFullShortUrl(linkUpdateReqDTO.getFullShortUrl()));
+        linkUpdateReqDTO.setValidDateType(ValidDateTypeEnum.CUSTOM.getType());
+        linkUpdateReqDTO.setValidDate(normalizeValidDate(linkUpdateReqDTO.getValidDate()));
+        validateDescription(linkUpdateReqDTO.getDescribe());
         // 鉴权：旧、新分组均需属于当前用户
         groupOwnershipService.assertOwnedByCurrentUser(linkUpdateReqDTO.getOriginGid());
         groupOwnershipService.assertOwnedByCurrentUser(linkUpdateReqDTO.getGid());
@@ -240,7 +223,9 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                     .validDateType(linkUpdateReqDTO.getValidDateType())
                     .validDate(linkUpdateReqDTO.getValidDate())
                     .build();
-            baseMapper.update(linkDO, updateWrapper);
+            if (baseMapper.update(linkDO, updateWrapper) < 1) {
+                throw new ClientException("短链接更新失败，请刷新后重试");
+            }
         } else {
             RReadWriteLock readWriteLock = redissonClient.getReadWriteLock(String.format(LOCK_GID_UPDATE_KEY, linkUpdateReqDTO.getFullShortUrl()));
             RLock rLock = readWriteLock.writeLock();
@@ -256,9 +241,11 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                         .delTime(System.currentTimeMillis())
                         .build();
                 delLinkDO.setDelFlag(1);
-                baseMapper.update(delLinkDO, linkUpdateWrapper);
+                if (baseMapper.update(delLinkDO, linkUpdateWrapper) < 1) {
+                    throw new ClientException("短链接更新失败，请刷新后重试");
+                }
                 LinkDO linkDO = LinkDO.builder()
-                        .domain(createLinkDefaultDomain)
+                        .domain(hasLinkDO.getDomain())
                         .originUrl(linkUpdateReqDTO.getOriginUrl())
                         .gid(linkUpdateReqDTO.getGid())
                         .createdType(hasLinkDO.getCreatedType())
@@ -274,14 +261,17 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                         .favicon(Objects.equals(linkUpdateReqDTO.getOriginUrl(), hasLinkDO.getOriginUrl()) ? hasLinkDO.getFavicon() : linkUtil.getFavicon(linkUpdateReqDTO.getOriginUrl()))
                         .delTime(0L)
                         .build();
-                baseMapper.insert(linkDO);
-                LambdaQueryWrapper<LinkGotoDO> linkGotoQueryWrapper = Wrappers.lambdaQuery(LinkGotoDO.class)
-                        .eq(LinkGotoDO::getFullShortUrl, linkUpdateReqDTO.getFullShortUrl())
-                        .eq(LinkGotoDO::getGid, hasLinkDO.getGid());
-                LinkGotoDO linkGotoDO = linkGotoMapper.selectOne(linkGotoQueryWrapper);
-                linkGotoMapper.delete(linkGotoQueryWrapper);
-                linkGotoDO.setGid(linkUpdateReqDTO.getGid());
-                linkGotoMapper.insert(linkGotoDO);
+                if (baseMapper.insert(linkDO) < 1) {
+                    throw new ClientException("短链接更新失败，请稍后重试");
+                }
+                UpdateWrapper<LinkGotoDO> linkGotoUpdateWrapper = Wrappers.update();
+                linkGotoUpdateWrapper
+                        .eq("full_short_url", linkUpdateReqDTO.getFullShortUrl())
+                        .eq("gid", hasLinkDO.getGid())
+                        .set("gid", linkUpdateReqDTO.getGid());
+                if (linkGotoMapper.update(null, linkGotoUpdateWrapper) < 1) {
+                    throw new ClientException("短链接路由记录不存在");
+                }
 
                 // 失效 gid 缓存
                 linkStatsSaver.invalidateGidCache(linkUpdateReqDTO.getFullShortUrl());
@@ -298,7 +288,8 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             redirectCache.invalidate(linkUpdateReqDTO.getFullShortUrl());
             Date currentDate = new Date();
             if (hasLinkDO.getValidDate() != null && hasLinkDO.getValidDate().before(currentDate)) {
-                if (Objects.equals(linkUpdateReqDTO.getValidDateType(), ValidDateTypeEnum.PERMANENT.getType()) || linkUpdateReqDTO.getValidDate().after(currentDate)) {
+                if (Objects.equals(linkUpdateReqDTO.getValidDateType(), ValidDateTypeEnum.PERMANENT.getType())
+                        || (linkUpdateReqDTO.getValidDate() != null && linkUpdateReqDTO.getValidDate().after(currentDate))) {
                     stringRedisTemplate.delete(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, linkUpdateReqDTO.getFullShortUrl()));
                 }
             }
@@ -350,68 +341,61 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             return resultMap;
         }
 
+        Map<String, Integer> todayPvMap = batchGetTodayPv(fullShortUrls);
+
         // 计算 v = epochDay(Asia/Shanghai) % 2
         int v = (int) (LocalDate.now(ZoneId.of("Asia/Shanghai")).toEpochDay() % 2);
 
         String uvPrefix = String.format(STATS_UV_PREFIX, v);
         String uipPrefix = String.format(STATS_UIP_PREFIX, v);
         String fsuList = String.join(",", fullShortUrls);
+        List<Object> uvResults = Collections.emptyList();
+        List<Object> uipResults = Collections.emptyList();
 
         try {
             // 批量获取 UV 数据
-            List<Object> uvResults = stringRedisTemplate.execute(hllBatchScript,
+            uvResults = stringRedisTemplate.execute(hllBatchScript,
                     Arrays.asList(uvPrefix), fsuList);
 
             // 批量获取 UIP 数据
-            List<Object> uipResults = stringRedisTemplate.execute(hllBatchScript,
+            uipResults = stringRedisTemplate.execute(hllBatchScript,
                     Arrays.asList(uipPrefix), fsuList);
-
-            // 合并结果
-            for (int i = 0; i < fullShortUrls.size(); i++) {
-                String fullShortUrl = fullShortUrls.get(i);
-
-                int todayUv = 0;
-                int todayUip = 0;
-
-                if (uvResults != null && i < uvResults.size()) {
-                    Object uvObj = uvResults.get(i);
-                    todayUv = uvObj instanceof Number ? ((Number) uvObj).intValue() : 0;
-                }
-
-                if (uipResults != null && i < uipResults.size()) {
-                    Object uipObj = uipResults.get(i);
-                    todayUip = uipObj instanceof Number ? ((Number) uipObj).intValue() : 0;
-                }
-
-                // 获取今日 PV
-                int todayPv = getTodayPvFromStats(fullShortUrl);
-
-                resultMap.put(fullShortUrl, new int[]{todayPv, todayUv, todayUip});
-            }
         } catch (Exception e) {
-            log.warn("Failed to batch get today stats, returning empty map", e);
+            log.warn("Failed to batch get today's UV/UIP, returning zero values", e);
+        }
+
+        for (int i = 0; i < fullShortUrls.size(); i++) {
+            String fullShortUrl = fullShortUrls.get(i);
+            int todayUv = valueAt(uvResults, i);
+            int todayUip = valueAt(uipResults, i);
+            int todayPv = todayPvMap.getOrDefault(fullShortUrl, 0);
+            resultMap.put(fullShortUrl, new int[]{todayPv, todayUv, todayUip});
         }
 
         return resultMap;
     }
 
-    /**
-     * 从 stats 表获取今日 PV
-     */
-    private int getTodayPvFromStats(String fullShortUrl) {
+    private Map<String, Integer> batchGetTodayPv(List<String> fullShortUrls) {
         try {
-            // 使用 Asia/Shanghai 时区获取今日日期
             ZoneId shanghaiZone = ZoneId.of("Asia/Shanghai");
             LocalDate today = LocalDate.now(shanghaiZone);
             Date todayDate = Date.from(today.atStartOfDay(shanghaiZone).toInstant());
-
-            // 从 stats 表查询今日 PV 总数
-            return Optional.ofNullable(linkAccessStatsMapper.sumTodayPvByShortUrl(fullShortUrl, todayDate))
-                    .orElse(0);
+            return linkAccessStatsMapper.listTodayPvByShortUrls(fullShortUrls, todayDate).stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            LinkAccessStatsDO::getFullShortUrl,
+                            each -> Optional.ofNullable(each.getPv()).orElse(0),
+                            Integer::sum
+                    ));
         } catch (Exception e) {
-            log.warn("Failed to get today PV from stats for {}, returning 0", fullShortUrl, e);
-            return 0;
+            log.warn("Failed to batch get today's PV, returning zero values", e);
+            return Collections.emptyMap();
         }
+    }
+
+    private int valueAt(List<Object> values, int index) {
+        if (values == null || index >= values.size()) return 0;
+        Object value = values.get(index);
+        return value instanceof Number number ? number.intValue() : 0;
     }
 
     @Override
@@ -421,12 +405,20 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         if (CollUtil.isEmpty(gidList)) {
             return Collections.emptyList();
         }
-        return baseMapper.listGroupLinkCount(gidList);
+        List<GroupLinkCountQueryVO> groupStats = baseMapper.listGroupLinkCount(gidList);
+        ZoneId shanghaiZone = ZoneId.of("Asia/Shanghai");
+        Date today = Date.from(LocalDate.now(shanghaiZone).atStartOfDay(shanghaiZone).toInstant());
+        Map<String, Long> todayPvByGroup = linkAccessStatsMapper.listTodayPvByGroups(gidList, today).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        GroupLinkCountQueryVO::getGid,
+                        each -> Optional.ofNullable(each.getTodayPv()).orElse(0L)
+                ));
+        groupStats.forEach(each -> each.setTodayPv(todayPvByGroup.getOrDefault(each.getGid(), 0L)));
+        return groupStats;
     }
 
-    @SneakyThrows
     @Override
-    public void restoreUrl(String shortUri, ServletRequest request, ServletResponse response) {
+    public void restoreUrl(String shortUri, ServletRequest request, ServletResponse response) throws IOException {
         String serverName = request.getServerName();
         String serverPort = Optional.of(request.getServerPort())
                 .filter(each -> !Objects.equals(each, 80))
@@ -451,12 +443,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             doRedirect(originalLink, fullShortUrl, request, response);
             return;
         }
-        boolean contains = ShortCodeUtil.mightExist(shortUri);
-        if (!contains) {
-            doNotFound(response);
-            return;
-        }
-        contains = shortUriCreateCachePenetrationBloomFilter.contains(fullShortUrl);
+        boolean contains = shortUriCreateCachePenetrationBloomFilter.contains(fullShortUrl);
         if (!contains) {
             doNotFound(response);
             return;
@@ -522,6 +509,15 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     @Override
     public LinkBatchCreateVO batchCreateLink(LinkBatchCreateReqDTO linkBatchCreateReqDTO) {
         List<String> originUrls = linkBatchCreateReqDTO.getOriginUrls();
+        if (CollUtil.isEmpty(originUrls)) {
+            throw new ClientException("批量创建链接不能为空");
+        }
+        if (originUrls.size() > MAX_BATCH_CREATE_SIZE) {
+            throw new ClientException(String.format("单次最多创建 %d 条短链接", MAX_BATCH_CREATE_SIZE));
+        }
+        if (originUrls.stream().anyMatch(StrUtil::isBlank)) {
+            throw new ClientException("原始链接不能为空");
+        }
         List<String> describes = linkBatchCreateReqDTO.getDescribes();
         List<LinkBaseInfoVO> result = new ArrayList<>();
         for (int i = 0; i < originUrls.size(); i++) {
@@ -530,7 +526,10 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
             String desc = (describes != null && i < describes.size()) ? describes.get(i) : null;
             shortLinkCreateReqDTO.setDescribe(desc);
             try {
-                LinkCreateVO shortLink = createLink(shortLinkCreateReqDTO);
+                LinkCreateVO shortLink = transactionTemplate.execute(status -> createLink(shortLinkCreateReqDTO));
+                if (shortLink == null) {
+                    throw new ServiceException("短链接创建失败，请稍后重试");
+                }
                 LinkBaseInfoVO linkBaseInfoRespDTO = LinkBaseInfoVO.builder()
                         .fullShortUrl(shortLink.getFullShortUrl())
                         .originUrl(shortLink.getOriginUrl())
@@ -538,13 +537,56 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
                         .build();
                 result.add(linkBaseInfoRespDTO);
             } catch (Exception ex) {
-                log.error("批量创建短链接失败，原始参数：{}", originUrls.get(i));
+                log.warn("批量创建第 {} 项失败，异常类型={}", i + 1, ex.getClass().getSimpleName());
             }
         }
         return LinkBatchCreateVO.builder()
                 .total(result.size())
                 .baseLinkInfos(result)
                 .build();
+    }
+
+    private Date normalizeValidDate(Date validDate) {
+        Date now = new Date();
+        if (validDate != null && !validDate.after(now)) {
+            throw new ClientException("有效期必须晚于当前时间");
+        }
+        Date maxValidDate = DateUtil.offsetDay(now, 3);
+        if (validDate == null) {
+            return DateUtil.offsetDay(now, 1);
+        }
+        return validDate.after(maxValidDate) ? maxValidDate : validDate;
+    }
+
+    private void validateDescription(String description) {
+        if (description != null && description.length() > 1024) {
+            throw new ClientException("短链接描述不能超过 1024 个字符");
+        }
+    }
+
+    private void warmRedirectCacheAfterCommit(String fullShortUrl, String originUrl, Date validDate) {
+        Runnable warmCache = () -> {
+            try {
+                stringRedisTemplate.opsForValue().set(
+                        String.format(GOTO_SHORT_LINK_KEY, fullShortUrl),
+                        originUrl,
+                        LinkUtil.getLinkCacheValidTime(validDate), TimeUnit.MILLISECONDS
+                );
+                stringRedisTemplate.delete(String.format(GOTO_IS_NULL_SHORT_LINK_KEY, fullShortUrl));
+            } catch (Exception ex) {
+                log.warn("Warm redirect cache after create failed, fullShortUrl={}", fullShortUrl, ex);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    warmCache.run();
+                }
+            });
+        } else {
+            warmCache.run();
+        }
     }
 
     private LinkStatsRecordDTO buildLinkStatsRecordAndSetUser(String fullShortUrl, ServletRequest request, ServletResponse response) {
@@ -590,6 +632,9 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     }
 
     private void verificationWhitelist(String originUrl) {
+        if (!LinkUtil.isPublicHttpUrl(originUrl) || originUrl.length() > 1024) {
+            throw new ClientException("跳转链接填写错误");
+        }
         Boolean enable = gotoDomainWhiteListConfiguration.getEnable();
         if (enable == null || !enable) {
             return;
@@ -605,6 +650,9 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     }
 
     private String normalizeFullShortUrl(String fullShortUrl) {
+        if (StrUtil.isBlank(fullShortUrl)) {
+            throw new ClientException("短链接不能为空");
+        }
         if (StrUtil.startWithIgnoreCase(fullShortUrl, "http://")) {
             return fullShortUrl.substring(7);
         }
@@ -615,7 +663,11 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     }
 
     private void doRedirect(String targetUrl, String fullShortUrl, ServletRequest request, ServletResponse response) throws IOException {
-        linkStats(buildLinkStatsRecordAndSetUser(fullShortUrl, request, response));
+        try {
+            linkStats(buildLinkStatsRecordAndSetUser(fullShortUrl, request, response));
+        } catch (Exception ex) {
+            log.warn("Enqueue redirect statistics failed, fullShortUrl={}, reason={}", fullShortUrl, ex.getMessage());
+        }
         ((HttpServletResponse) response).sendRedirect(targetUrl);
     }
 

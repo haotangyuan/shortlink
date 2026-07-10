@@ -3,12 +3,14 @@ package dev.haotangyuan.shortlink.toolkit.ipgeo;
 import org.lionsoul.ip2region.xdb.Searcher;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.FileCopyUtils;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * IP 地理位置查询本地客户端(ip2region xdb, 全内存模式)
  *
  * @author: haotangyuan
  */
+@Slf4j
 public class LocalClient implements IpGeoClient {
 
     /**
@@ -32,13 +34,7 @@ public class LocalClient implements IpGeoClient {
         try {
             // 检查是否是 IPv6 地址
             if (ip != null && ip.contains(":")) {
-                // IPv6 地址，ip2region 不支持，返回默认值
-                return GeoInfo.builder()
-                        .country("Unknown")
-                        .province("Unknown")
-                        .city("Unknown")
-                        .isp("Unknown")
-                        .build();
+                return GeoInfo.unknown();
             }
 
             String region = searcher.search(ip);
@@ -54,14 +50,8 @@ public class LocalClient implements IpGeoClient {
                     .isp(isp)
                     .build();
         } catch (Exception e) {
-            System.out.printf("failed to search(%s): %s\n", ip, e);
-            // 异常时返回默认值而不是 null
-            return GeoInfo.builder()
-                    .country("Unknown")
-                    .province("Unknown")
-                    .city("Unknown")
-                    .isp("Unknown")
-                    .build();
+            log.warn("Failed to query local IP geolocation, ip={}", ip, e);
+            return GeoInfo.unknown();
         }
     }
 }

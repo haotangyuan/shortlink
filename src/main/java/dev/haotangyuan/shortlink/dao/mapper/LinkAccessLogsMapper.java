@@ -7,6 +7,7 @@ import dev.haotangyuan.shortlink.dao.entity.LinkAccessLogsDO;
 import dev.haotangyuan.shortlink.dao.entity.LinkAccessStatsDO;
 import dev.haotangyuan.shortlink.dto.req.GroupStatsAccessRecordReqDTO;
 import dev.haotangyuan.shortlink.dto.req.GroupStatsReqDTO;
+import dev.haotangyuan.shortlink.dto.req.LinkStatsAccessRecordReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkStatsReqDTO;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -136,6 +137,26 @@ public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
     HashMap<String, Object> findUvTypeCntByShortLink(@Param("param") LinkStatsReqDTO linkStatsReqDTO);
 
     /**
+     * 根据短链接和分组分页获取访问日志。
+     */
+    @Select("""
+            SELECT
+                tls.*
+            FROM t_link tl
+            INNER JOIN t_link_access_logs tls
+                ON tl.full_short_url = tls.full_short_url
+            WHERE tls.full_short_url = #{param.fullShortUrl}
+                AND tl.gid = #{param.gid}
+                AND tl.del_flag = '0'
+                AND tl.enable_status = #{param.enableStatus}
+                AND tls.del_flag = '0'
+                AND tls.create_time BETWEEN #{param.startDate} AND #{param.endDate}
+            ORDER BY tls.create_time DESC
+            """)
+    IPage<LinkAccessLogsDO> selectLinkPage(Page<LinkAccessLogsDO> page,
+                                           @Param("param") LinkStatsAccessRecordReqDTO request);
+
+    /**
      * 根据短链接分页获取访问日志
      *
      * @param groupStatsAccessRecordReqDTO 查询参数
@@ -150,6 +171,7 @@ public interface LinkAccessLogsMapper extends BaseMapper<LinkAccessLogsDO> {
             WHERE tl.gid = #{param.gid}
                 AND tl.del_flag = '0'
                 AND tl.enable_status = '0'
+                AND tls.del_flag = '0'
                 AND tls.create_time BETWEEN #{param.startDate} AND #{param.endDate}
             ORDER BY tls.create_time DESC
             """)

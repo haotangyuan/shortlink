@@ -1,9 +1,9 @@
 package dev.haotangyuan.shortlink.toolkit;
 
 import cn.hutool.core.util.StrUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
-import java.math.BigInteger;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -17,6 +17,7 @@ import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.SHORT_C
  *
  * @author: haotangyuan
  */
+@Slf4j
 public class ShortCodeUtil {
 
     /**
@@ -33,7 +34,6 @@ public class ShortCodeUtil {
     private static volatile long A;               // 仿射参数 a
     private static volatile long B;               // 仿射参数 b
     private static volatile long N;               // N=62^LENGTH
-    private static volatile long INV_A;           // a 在模 N 下的乘法逆元
 
     /**
      * Redis 依赖
@@ -43,7 +43,6 @@ public class ShortCodeUtil {
     /**
      * 当前段 [start, end] 与游标（包含）
      */
-    private static volatile long start = 1; // 将通过首次 fetch 覆盖
     private static volatile long end = 0; // start > end 表示“无段可用”
     private static final AtomicLong cursor = new AtomicLong(0);
 
@@ -90,7 +89,7 @@ public class ShortCodeUtil {
         long aLong = (StrUtil.isBlank(props.getA()))
                 ? 1_999_997L
                 : Long.parseLong(props.getA().trim());
-        if (!isCoprime(aLong, 62) || aLong % 31 == 0 || (aLong & 1) == 0) {
+        if (!isCoprime(aLong, 62)) {
             throw new IllegalArgumentException("affine 'a' must be odd and coprime to 62 and 31");
         }
         long aMax = (Long.MAX_VALUE - (N - 1)) / (N - 1);
@@ -104,10 +103,6 @@ public class ShortCodeUtil {
         if (bLong >= N) bLong = bLong % N;
         A = aLong;
         B = bLong;
-
-        // 求 invA（一次性计算，使用 BigInteger 求逆更稳妥）
-        BigInteger inv = BigInteger.valueOf(A).modInverse(BigInteger.valueOf(N));
-        INV_A = inv.longValue();
 
         stringRedisTemplate = redisTemplate;
         // 启动预热：同步拉首个号段，避免首个请求落慢路径
@@ -168,7 +163,8 @@ public class ShortCodeUtil {
             try {
                 Segment seg = fetchFromRedis();
                 nextSeg.compareAndSet(null, seg);
-            } catch (Throwable ignore) {
+            } catch (Exception ex) {
+                log.warn("Prefetch short-code segment failed: {}", ex.getMessage());
             } finally {
                 prefetching.set(false);
             }
@@ -179,9 +175,8 @@ public class ShortCodeUtil {
      * 切换当前号段为指定段
      */
     private static void switchTo(Segment seg) {
-        start = seg.start;
         end = seg.end;
-        cursor.set(start);
+        cursor.set(seg.start);
     }
 
     /**
@@ -246,44 +241,4 @@ public class ShortCodeUtil {
         return y;
     }
 
-    /* Base62 解码为 y（long） */
-    public static long decodeToY(String code) {
-        long v = 0L;
-
-        for (int k = 0; k < code.length(); k++) {
-            char c = code.charAt(k);
-            int idx;
-            if (c >= '0' && c <= '9') idx = c - '0';
-            else if (c >= 'A' && c <= 'Z') idx = 10 + (c - 'A');
-            else if (c >= 'a' && c <= 'z') idx = 36 + (c - 'a');
-            else throw new IllegalArgumentException("invalid base62 char: " + c);
-            v = v * 62 + idx;
-        }
-        return v;
-    }
-
-    /* 解码短码为原始序号 i（long） */
-    public static long decodeToIndex(String code) {
-        ensureInit();
-        if (code == null || code.length() != LENGTH) {
-            throw new IllegalArgumentException("code length mismatch");
-        }
-        long y = decodeToY(code);
-        long t = (y - B) % N;
-        if (t < 0) t += N;
-        // i = invA * t mod N（用 BigInteger 做一次取模乘法，避免 long 中间值溢出）
-        long i = BigInteger.valueOf(INV_A).multiply(BigInteger.valueOf(t)).mod(BigInteger.valueOf(N)).longValue();
-        return i;
-    }
-
-    /* 快速否定：仅当 i > maxAllocated 才能断言不存在；否则返回 true（可能存在） */
-    public static boolean mightExist(String code) {
-        try {
-            if (code == null || code.length() != LENGTH) return true;
-            long i = decodeToIndex(code);
-            return i <= cursor.get();
-        } catch (Exception e) {
-            return true;
-        }
-    }
 }

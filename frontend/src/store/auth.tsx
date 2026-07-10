@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { adminApi } from "../api/admin";
-import { ApiError, getSessionToken, setSessionToken } from "../api/client";
+import { AUTH_CLEARED_EVENT, ApiError, getSessionToken, setSessionToken } from "../api/client";
 import type { UserVO } from "../api/types";
 
 type AuthContextValue = {
@@ -25,13 +25,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(() => getSessionToken());
   const [user, setUser] = useState<UserVO | null>(null);
 
-  const clearAuth = useCallback(() => {
+  const resetAuthState = useCallback(() => {
     setUsername(null);
     setToken(null);
     setUser(null);
-    setSessionToken(null);
     localStorage.removeItem("shortlink.username");
   }, []);
+
+  const clearAuth = useCallback(() => {
+    setSessionToken(null);
+    resetAuthState();
+  }, [resetAuthState]);
 
   const refreshUser = useCallback(async () => {
     if (!username) return;
@@ -41,19 +45,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = useCallback(async () => {
     if (!username || !token) return false;
-    const valid = await adminApi.checkLogin(username, token).catch(() => false);
-    if (!valid) clearAuth();
-    return valid;
+    try {
+      const valid = await adminApi.checkLogin(username, token);
+      if (!valid) clearAuth();
+      return valid;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        clearAuth();
+        return false;
+      }
+      return true;
+    }
   }, [clearAuth, token, username]);
 
   const login = useCallback(async (nextUsername: string, password: string) => {
     const result = await adminApi.login(nextUsername, password);
     setSessionToken(result.token);
-    localStorage.setItem("shortlink.username", nextUsername);
-    setUsername(nextUsername);
-    setToken(result.token);
-    setUser(await adminApi.getUser(nextUsername));
-  }, []);
+    try {
+      const nextUser = await adminApi.getUser(nextUsername);
+      localStorage.setItem("shortlink.username", nextUsername);
+      setUsername(nextUsername);
+      setToken(result.token);
+      setUser(nextUser);
+    } catch (error) {
+      clearAuth();
+      throw error;
+    }
+  }, [clearAuth]);
 
   const logout = useCallback(async () => {
     if (username && token) {
@@ -69,6 +87,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
     }
   }, [clearAuth, refreshUser, token, user, username]);
+
+  useEffect(() => {
+    window.addEventListener(AUTH_CLEARED_EVENT, resetAuthState);
+    return () => window.removeEventListener(AUTH_CLEARED_EVENT, resetAuthState);
+  }, [resetAuthState]);
 
   const value = useMemo(
     () => ({

@@ -3,6 +3,7 @@ package dev.haotangyuan.shortlink.toolkit.ipgeo;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson2.JSON;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.Map;
  *
  * @author: haotangyuan
  */
+@Slf4j
 public class AmapClient implements IpGeoClient {
 
     /**
@@ -37,29 +39,30 @@ public class AmapClient implements IpGeoClient {
 
     @Override
     public GeoInfo query(String ip) {
-        Map<String, Object> localeParamMap = new HashMap<>();
-        localeParamMap.put("key", key);
-        localeParamMap.put("ip", ip);
-        String localeResultStr = HttpUtil.get(endpoint, localeParamMap, timeout);
-        AmapResp r = JSON.parseObject(localeResultStr, AmapResp.class);
-        if (r == null || !"1".equals(r.status)) {
-            return GeoInfo.builder()
-                    .country("Unknown")
-                    .province("Unknown")
-                    .city("Unknown")
-                    .build();
-        }
-        String province = normalize(r.province);
-        String city = normalize(r.city);
-        String adcode = normalize(r.adcode);
-        String country = (adcode != null && adcode.matches("\\d{6}")) ? "中国" : null;
+        try {
+            Map<String, Object> localeParamMap = new HashMap<>();
+            localeParamMap.put("key", key);
+            localeParamMap.put("ip", ip);
+            String localeResultStr = HttpUtil.get(endpoint, localeParamMap, timeout);
+            AmapResp r = JSON.parseObject(localeResultStr, AmapResp.class);
+            if (r == null || !"1".equals(r.status)) {
+                return GeoInfo.unknown();
+            }
+            String province = normalize(r.province);
+            String city = normalize(r.city);
+            String adcode = normalize(r.adcode);
+            String country = (adcode != null && adcode.matches("\\d{6}")) ? "中国" : null;
 
-        return GeoInfo.builder()
-                .country(country)
-                .province(province)
-                .city(city)
-                .adcode(adcode)
-                .build();
+            return GeoInfo.builder()
+                    .country(country)
+                    .province(province)
+                    .city(city)
+                    .adcode(adcode)
+                    .build();
+        } catch (Exception ex) {
+            log.warn("Failed to query Amap IP geolocation, ip={}, reason={}", ip, ex.getMessage());
+            return GeoInfo.unknown();
+        }
     }
 
     private static String normalize(String v) {

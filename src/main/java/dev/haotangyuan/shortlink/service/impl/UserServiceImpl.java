@@ -3,7 +3,6 @@ package dev.haotangyuan.shortlink.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.UUID;
-import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -42,6 +41,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.*;
@@ -77,8 +77,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
 
     @Override
     public UserVO getByUsername(String username) {
+        if (!Objects.equals(UserContext.getUsername(), username)) {
+            throw new ClientException("无权查看其他用户的信息");
+        }
         LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
-                .eq(UserDO::getUsername, username);
+                .eq(UserDO::getUsername, username)
+                .eq(UserDO::getDelFlag, 0);
         UserDO userDO = baseMapper.selectOne(queryWrapper);
         if (userDO == null) {
             throw new ClientException(BaseErrorCode.USER_NULL);
@@ -90,12 +94,22 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
 
     @Override
     public Boolean existsByUsername(String username) {
-        return userRegisterCachePenetrationBloomFilter.contains(username);
+        if (username == null || username.isBlank() || username.length() > 64) {
+            return false;
+        }
+        if (!userRegisterCachePenetrationBloomFilter.contains(username)) {
+            return false;
+        }
+        LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
+                .eq(UserDO::getUsername, username)
+                .eq(UserDO::getDelFlag, 0);
+        return baseMapper.selectCount(queryWrapper) > 0;
     }
 
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void register(UserRegisterReqDTO requestParam) {
+        validateRegistration(requestParam);
         if (existsByUsername(requestParam.getUsername())) {
             throw new ClientException(USER_NAME_EXIST);
         }
@@ -127,19 +141,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
             throw new ClientException("无权修改其他用户的信息");
         }
         LambdaUpdateWrapper<UserDO> updateWrapper = Wrappers.lambdaUpdate(UserDO.class)
-                .eq(UserDO::getUsername, userUpdateReqDTO.getUsername());
+                .eq(UserDO::getUsername, userUpdateReqDTO.getUsername())
+                .eq(UserDO::getDelFlag, 0);
         UserDO userDO = BeanUtil.toBean(userUpdateReqDTO, UserDO.class);
         if (userDO.getPhone() != null && userDO.getPhone().contains("*")) {
             userDO.setPhone(null);
         }
         if (userUpdateReqDTO.getPassword() != null && !userUpdateReqDTO.getPassword().isEmpty()) {
+            validatePassword(userUpdateReqDTO.getPassword());
             userDO.setPassword(HashUtil.encryptByBcrypt(userUpdateReqDTO.getPassword()));
         }
-        baseMapper.update(userDO, updateWrapper);
+        if (baseMapper.update(userDO, updateWrapper) < 1) {
+            throw new ClientException(USER_NULL);
+        }
     }
 
     @Override
     public UserLoginVO login(UserLoginReqDTO userLoginReqDTO) {
+        if (userLoginReqDTO == null
+                || userLoginReqDTO.getUsername() == null
+                || userLoginReqDTO.getUsername().isBlank()
+                || userLoginReqDTO.getPassword() == null
+                || userLoginReqDTO.getPassword().isBlank()) {
+            throw new ClientException("用户名和密码不能为空");
+        }
         LambdaQueryWrapper<UserDO> queryWrapper = Wrappers.lambdaQuery(UserDO.class)
                 .eq(UserDO::getUsername, userLoginReqDTO.getUsername())
                 .eq(UserDO::getDelFlag, 0);
@@ -164,10 +189,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
             refreshUserGidsIndex(userLoginReqDTO.getUsername());
             return new UserLoginVO(token);
         }
-        // 生成新 token，并同时写入会话映射与兼容的用户名 Hash
+        // 生成新 token，并同时写入会话映射与用户名 Hash 索引
         String uuid = UUID.randomUUID().toString();
         stringRedisTemplate.opsForValue().set(String.format(SESSION_KEY, uuid), userLoginReqDTO.getUsername(), sessionTtlMinutes, TimeUnit.MINUTES);
-        stringRedisTemplate.opsForHash().put(USER_LOGIN_KEY + userLoginReqDTO.getUsername(), uuid, JSON.toJSONString(userDO));
+        stringRedisTemplate.opsForHash().put(USER_LOGIN_KEY + userLoginReqDTO.getUsername(), uuid, "1");
         stringRedisTemplate.expire(USER_LOGIN_KEY + userLoginReqDTO.getUsername(), sessionTtlMinutes, TimeUnit.MINUTES);
         // 刷新该用户 GID 正向索引集合 TTL（并补齐集合）
         refreshUserGidsIndex(userLoginReqDTO.getUsername());
@@ -187,15 +212,28 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
             return;
         }
         String key = String.format(SESSION_KEY, token);
+        String actualUsername;
         try {
-            stringRedisTemplate.delete(key);
-        } catch (Throwable t) {
-            log.warn("Logout delete session error, username={}", username, t);
+            actualUsername = stringRedisTemplate.opsForValue().get(key);
+        } catch (Exception ex) {
+            log.warn("Logout read session error, username={}", username, ex);
+            return;
+        }
+        if (actualUsername == null) {
+            return;
+        }
+        if (!Objects.equals(actualUsername, username)) {
+            throw new ClientException(USER_TOKEN_FAIL);
         }
         try {
-            stringRedisTemplate.opsForHash().delete(USER_LOGIN_KEY + username, token);
-        } catch (Throwable t) {
-            log.warn("Logout delete token index error, username={}", username, t);
+            stringRedisTemplate.delete(key);
+        } catch (Exception ex) {
+            log.warn("Logout delete session error, username={}", username, ex);
+        }
+        try {
+            stringRedisTemplate.opsForHash().delete(USER_LOGIN_KEY + actualUsername, token);
+        } catch (Exception ex) {
+            log.warn("Logout delete token index error, username={}", actualUsername, ex);
         }
     }
 
@@ -220,9 +258,33 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, UserDO> implements 
                 args.add(groupDO.getGid());
             }
             stringRedisTemplate.execute(USER_GIDS_REFRESH_SCRIPT, keys, args.toArray());
-        } catch (Throwable t) {
-            // 可按需记录日志
-            log.error("Refresh user_gids index error, username={}", username, t);
+        } catch (Exception ex) {
+            log.error("Refresh user_gids index error, username={}", username, ex);
+        }
+    }
+
+    private void validateRegistration(UserRegisterReqDTO requestParam) {
+        if (requestParam == null
+                || requestParam.getUsername() == null
+                || requestParam.getUsername().isBlank()
+                || requestParam.getUsername().length() > 64) {
+            throw new ClientException("用户名长度应为 1-64 个字符");
+        }
+        validatePassword(requestParam.getPassword());
+        if (requestParam.getRealName() != null && requestParam.getRealName().length() > 256) {
+            throw new ClientException("真实姓名过长");
+        }
+        if (requestParam.getPhone() != null && requestParam.getPhone().length() > 128) {
+            throw new ClientException("手机号过长");
+        }
+        if (requestParam.getMail() != null && requestParam.getMail().length() > 512) {
+            throw new ClientException("邮箱过长");
+        }
+    }
+
+    private void validatePassword(String password) {
+        if (password == null || password.length() < 8 || password.length() > 72) {
+            throw new ClientException("密码长度应为 8-72 个字符");
         }
     }
 }

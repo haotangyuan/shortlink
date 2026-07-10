@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import dev.haotangyuan.shortlink.dao.entity.LinkAccessStatsDO;
 import dev.haotangyuan.shortlink.dto.req.GroupStatsReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkStatsReqDTO;
+import dev.haotangyuan.shortlink.vo.GroupLinkCountQueryVO;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -182,29 +183,49 @@ public interface LinkAccessStatsMapper extends BaseMapper<LinkAccessStatsDO> {
     List<LinkAccessStatsDO> listWeekdayStatsByGroup(@Param("param") GroupStatsReqDTO groupStatsReqDTO);
 
     /**
-     * 查询单个短链接今日 PV 总数（从 stats 表）
-     *
-     * @param fullShortUrl 完整短链接
-     * @param today        今日日期
-     * @return 今日 PV 总数
+     * 批量查询短链接今日 PV。
      */
     @Select("""
+            <script>
             SELECT
-                COALESCE(SUM(tlas.pv), 0)
+                tlas.full_short_url,
+                COALESCE(SUM(tlas.pv), 0) AS pv
             FROM t_link_access_stats tlas
-            WHERE tlas.full_short_url = #{fullShortUrl}
+            WHERE tlas.full_short_url IN
+              <foreach item="fullShortUrl" collection="fullShortUrls" open="(" separator="," close=")">
+                #{fullShortUrl}
+              </foreach>
               AND tlas.del_flag = '0'
-              AND DATE(tlas.date) = DATE(#{today})
-              AND EXISTS (
-                  SELECT 1
-                  FROM t_link tl
-                  WHERE tl.full_short_url = tlas.full_short_url
-                    AND tl.del_flag = '0'
-                    AND tl.enable_status = '0'
-              )
+              AND tlas.date = #{today}
             GROUP BY tlas.full_short_url
+            </script>
             """)
-    Integer sumTodayPvByShortUrl(@Param("fullShortUrl") String fullShortUrl,
-                                 @Param("today") Date today);
+    List<LinkAccessStatsDO> listTodayPvByShortUrls(@Param("fullShortUrls") List<String> fullShortUrls,
+                                                   @Param("today") Date today);
+
+    /**
+     * 批量查询分组今日 PV。
+     */
+    @Select("""
+            <script>
+            SELECT
+                tl.gid AS gid,
+                COALESCE(SUM(tlas.pv), 0) AS todayPv
+            FROM t_link tl
+            INNER JOIN t_link_access_stats tlas
+                ON tl.full_short_url = tlas.full_short_url
+            WHERE tl.gid IN
+              <foreach item="gid" collection="gidList" open="(" separator="," close=")">
+                #{gid}
+              </foreach>
+              AND tl.del_flag = '0'
+              AND tl.enable_status = '0'
+              AND tlas.del_flag = '0'
+              AND tlas.date = #{today}
+            GROUP BY tl.gid
+            </script>
+            """)
+    List<GroupLinkCountQueryVO> listTodayPvByGroups(@Param("gidList") List<String> gidList,
+                                                    @Param("today") Date today);
 
 }

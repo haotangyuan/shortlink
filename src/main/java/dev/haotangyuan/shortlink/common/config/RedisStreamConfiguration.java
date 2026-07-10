@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -40,14 +41,19 @@ public class RedisStreamConfiguration {
     private final RedisConnectionFactory redisConnectionFactory;
     private final LinkStatsSaveConsumer linkStatsSaveConsumer;
 
-    // 每 CPU ≈1.5 个消费者，向下取整，至少 1 个
-    private final int consumerCount = Math.max(1, (int) (Runtime.getRuntime().availableProcessors() * 1.5));
+    @Value("${short-link.stats.consumer-count:0}")
+    private int configuredConsumerCount;
+
+    @Value("${short-link.stats.consumer-instance-id:${HOSTNAME:local}}")
+    private String consumerInstanceId;
+
     private static final long THROUGHPUT_LOG_INTERVAL_MS = 300_000L;
     private final LongAdder consumeCounter = new LongAdder();
     private final AtomicLong lastThroughputLogTime = new AtomicLong(System.currentTimeMillis());
 
     @Bean
     public ExecutorService asyncStreamConsumer() {
+        int consumerCount = consumerCount();
         AtomicInteger index = new AtomicInteger();
         log.info("消费者线程池配置，线程数：{}", consumerCount);
         return Executors.newFixedThreadPool(consumerCount, r -> {
@@ -78,19 +84,21 @@ public class RedisStreamConfiguration {
             StreamMessageListenerContainer<String, MapRecord<String, String, String>> container) {
 
         List<Subscription> subscriptions = new ArrayList<>();
+        int consumerCount = consumerCount();
 
         StreamListener<String, MapRecord<String, String, String>> loggingListener = message -> {
-            consumeCounter.increment();
             linkStatsSaveConsumer.onMessage(message);
+            consumeCounter.increment();
 
             long now = System.currentTimeMillis();
             long last = lastThroughputLogTime.get();
             if (now - last >= THROUGHPUT_LOG_INTERVAL_MS && lastThroughputLogTime.compareAndSet(last, now)) {
                 long processed = consumeCounter.sumThenReset();
                 if (processed > 0) {
-                    long tps = processed * 1000 / THROUGHPUT_LOG_INTERVAL_MS;
+                    long elapsed = now - last;
+                    long tps = processed * 1000 / elapsed;
                     log.info("Stream 消费吞吐量: {} msgs / {} ms (≈{} TPS)",
-                            processed, THROUGHPUT_LOG_INTERVAL_MS, tps);
+                            processed, elapsed, tps);
                 }
             }
         };
@@ -100,15 +108,25 @@ public class RedisStreamConfiguration {
                     StreamMessageListenerContainer.StreamReadRequest.builder(
                                     StreamOffset.create(SHORT_LINK_STATS_STREAM_TOPIC_KEY, ReadOffset.lastConsumed()))
                             .cancelOnError(throwable -> false)
-                            .consumer(Consumer.from(SHORT_LINK_STATS_STREAM_GROUP_KEY, "stats-consumer-" + i))
+                            .consumer(Consumer.from(
+                                    SHORT_LINK_STATS_STREAM_GROUP_KEY,
+                                    "stats-consumer-" + consumerInstanceId + "-" + i
+                            ))
                             .autoAcknowledge(false)
                             .build();
 
             Subscription subscription = container.register(request, loggingListener);
             subscriptions.add(subscription);
-            log.info("注册消费者: stats-consumer-{}", i);
+            log.info("注册消费者: stats-consumer-{}-{}", consumerInstanceId, i);
         }
 
         return subscriptions;
+    }
+
+    private int consumerCount() {
+        if (configuredConsumerCount > 0) {
+            return configuredConsumerCount;
+        }
+        return Math.min(8, Math.max(1, (int) (Runtime.getRuntime().availableProcessors() * 1.5)));
     }
 }

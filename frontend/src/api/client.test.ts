@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, request, setSessionToken } from "./client";
+import { AUTH_CLEARED_EVENT, ApiError, request, setSessionToken } from "./client";
 
 describe("api request client", () => {
   beforeEach(() => {
@@ -25,11 +25,28 @@ describe("api request client", () => {
 
   it("clears the stored session token when the backend returns 401", async () => {
     setSessionToken("expired-token");
+    localStorage.setItem("shortlink.username", "alice");
+    const authCleared = vi.fn();
+    window.addEventListener(AUTH_CLEARED_EVENT, authCleared);
     vi.mocked(fetch).mockResolvedValue(
       new Response(JSON.stringify({ code: "A000200", message: "unauthorized" }), { status: 401 }),
     );
 
     await expect(request("/api/protected")).rejects.toBeInstanceOf(ApiError);
     expect(localStorage.getItem("shortlink.sessionToken")).toBeNull();
+    expect(localStorage.getItem("shortlink.username")).toBeNull();
+    expect(authCleared).toHaveBeenCalledOnce();
+    window.removeEventListener(AUTH_CLEARED_EVENT, authCleared);
+  });
+
+  it("keeps the admin session when a separate API token is rejected", async () => {
+    setSessionToken("admin-session");
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ code: "A000200", message: "unauthorized" }), { status: 401 }),
+    );
+
+    await expect(request("/api/core", {}, false)).rejects.toBeInstanceOf(ApiError);
+
+    expect(localStorage.getItem("shortlink.sessionToken")).toBe("admin-session");
   });
 });

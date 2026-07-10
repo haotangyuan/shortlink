@@ -17,6 +17,7 @@ import jakarta.servlet.ServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -32,7 +33,7 @@ public class LinkController {
 
 
     @GetMapping("/{shortUri}")
-    public void restoreUrl(@PathVariable String shortUri, ServletRequest request, ServletResponse response) {
+    public void restoreUrl(@PathVariable String shortUri, ServletRequest request, ServletResponse response) throws IOException {
         linkService.restoreUrl(shortUri, request, response);
     }
 

@@ -134,4 +134,10 @@ public class RedisKeyConstant {
      * v = epochDay(Asia/Shanghai) % 2
      */
     public static final String STATS_UIP_ACTIVE_KEY = "short-link:stats:uip:active:%d";
+
+    /**
+     * 统计消息对应的 HLL 增量暂存。
+     * 格式：short-link:stats:hll-delta:{messageId}:{dimension}
+     */
+    public static final String STATS_HLL_DELTA_KEY = "short-link:stats:hll-delta:%s:%s";
 }

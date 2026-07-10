@@ -3,7 +3,7 @@ import { BarChart3, ExternalLink, Pencil, Plus, Recycle } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { adminApi } from "../../api/admin";
 import type { LinkPageVO } from "../../api/types";
-import { Button } from "../../components/ui/Button";
+import { Button, buttonClassName } from "../../components/ui/Button";
 import { Card, CardContent } from "../../components/ui/Card";
 import { CopyButton } from "../../components/ui/CopyButton";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -54,11 +54,9 @@ export function LinksPage() {
           <h1 className="text-2xl font-semibold text-slate-950">链接管理</h1>
           <p className="mt-1 text-sm text-slate-500">按分组筛选、编辑和回收短链接</p>
         </div>
-        <Link to="/dashboard/links/create">
-          <Button>
-            <Plus className="h-4 w-4" />
-            创建链接
-          </Button>
+        <Link className={buttonClassName()} to="/dashboard/links/create">
+          <Plus className="h-4 w-4" />
+          创建链接
         </Link>
       </div>
       <Card>
@@ -115,28 +113,28 @@ export function LinksPage() {
                         <td className="py-3">
                           <div className="flex justify-end gap-2">
                             <CopyButton text={absoluteShortUrl} label="复制" />
-                            <a href={absoluteShortUrl} target="_blank" rel="noreferrer">
-                              <Button
-                                variant="ghost"
-                                className="h-10 w-10 px-0"
-                                aria-label="打开短链接"
-                              >
-                                <ExternalLink className="h-4 w-4" />
-                              </Button>
+                            <a
+                              href={absoluteShortUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={buttonClassName("ghost", "h-10 w-10 px-0")}
+                              aria-label="打开短链接"
+                            >
+                              <ExternalLink className="h-4 w-4" />
                             </a>
                             <Link
                               to={`/dashboard/links/edit?gid=${encodeURIComponent(link.gid)}&fullShortUrl=${encodeURIComponent(link.fullShortUrl)}`}
+                              className={buttonClassName("ghost", "h-10 w-10 px-0")}
+                              aria-label="编辑短链接"
                             >
-                              <Button variant="ghost" className="h-10 w-10 px-0" aria-label="编辑短链接">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
+                              <Pencil className="h-4 w-4" />
                             </Link>
                             <Link
                               to={`/dashboard/analytics?gid=${encodeURIComponent(link.gid)}&fullShortUrl=${encodeURIComponent(link.fullShortUrl)}`}
+                              className={buttonClassName("ghost", "h-10 w-10 px-0")}
+                              aria-label="查看访问分析"
                             >
-                              <Button variant="ghost" className="h-10 w-10 px-0" aria-label="查看访问分析">
-                                <BarChart3 className="h-4 w-4" />
-                              </Button>
+                              <BarChart3 className="h-4 w-4" />
                             </Link>
                             <Button
                               variant="ghost"

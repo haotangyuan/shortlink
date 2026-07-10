@@ -1,59 +1,29 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Sparkles, X, Send, Loader2, Bot, User, Plus, History, Trash2, MessageSquare } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { streamAiChat } from "../../api/ai";
-import { adminApi } from "../../api/admin";
-import type { AiSession } from "../../api/types";
 import { cn } from "../../lib/cn";
-
-interface ChatMessage {
-  role: "user" | "assistant" | "system";
-  content: string;
-  toolCalls?: string[];
-}
-
-const QUICK_QUESTIONS = [
-  "本周流量趋势分析",
-  "哪些链接表现最好？",
-  "有没有异常流量？",
-  "检查失效链接",
-];
-
-const TOOL_LABELS: Record<string, string> = {
-  get_link_stats: "查询短链统计数据",
-  get_group_stats: "查询分组统计数据",
-  compare_links: "对比短链表现",
-  list_groups: "获取分组列表",
-  detect_anomalies: "检测流量异常",
-  get_link_health: "检查链接健康状态",
-};
-
-function formatTime(dateStr: string): string {
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  const minutes = Math.floor(diff / 60000);
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (minutes < 1) return "刚刚";
-  if (minutes < 60) return `${minutes} 分钟前`;
-  if (hours < 24) return `${hours} 小时前`;
-  if (days < 7) return `${days} 天前`;
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
+import { formatTime, QUICK_QUESTIONS, TOOL_LABELS, useAiChat } from "./useAiChat";
 
 export function AiCopilot() {
   const [open, setOpen] = useState(false);
-  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
-  const [sessions, setSessions] = useState<AiSession[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [currentTool, setCurrentTool] = useState<string | null>(null);
-  const [historyLoading, setHistoryLoading] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
+  const {
+    sessionId,
+    sessions,
+    messages,
+    input,
+    setInput,
+    loading,
+    currentTool,
+    historyLoading,
+    loadSessions,
+    loadSessionMessages: loadMessages,
+    startNewChat,
+    deleteSession,
+    sendMessage: send,
+    stop,
+  } = useAiChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -63,134 +33,38 @@ export function AiCopilot() {
 
   useEffect(() => {
     if (open) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-      loadSessions();
+      const timer = setTimeout(() => inputRef.current?.focus(), 100);
+      void loadSessions();
+      return () => clearTimeout(timer);
     }
-  }, [open]);
-
-  async function loadSessions() {
-    try {
-      const data = await adminApi.getAiSessions();
-      setSessions(data ?? []);
-    } catch {
-      setSessions([]);
-    }
-  }
+  }, [loadSessions, open]);
 
   async function loadSessionMessages(sid: string) {
-    setHistoryLoading(true);
     setShowHistory(false);
-    try {
-      const data = await adminApi.getAiSessionMessages(sid);
-      const loaded: ChatMessage[] = (data ?? []).map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }));
-      setMessages(loaded);
-      setSessionId(sid as `${string}-${string}-${string}-${string}-${string}`);
-    } catch {
-      setMessages([]);
-    } finally {
-      setHistoryLoading(false);
-    }
+    await loadMessages(sid);
   }
 
   function handleNewChat() {
-    setSessionId(crypto.randomUUID());
-    setMessages([]);
+    startNewChat();
     setShowHistory(false);
-    setInput("");
     setTimeout(() => inputRef.current?.focus(), 100);
   }
 
-  async function handleDeleteSession(sid: string, e: React.MouseEvent) {
-    e.stopPropagation();
-    try {
-      await adminApi.deleteAiSession(sid);
-      setSessions((prev) => prev.filter((s) => s.sessionId !== sid));
-      // 如果删除的是当前会话，开始新对话
-      if (sid === sessionId) {
-        handleNewChat();
-      }
-    } catch {
-      // 静默处理
-    }
+  function handleDeleteSession(sid: string, event: React.MouseEvent) {
+    event.stopPropagation();
+    void deleteSession(sid);
   }
 
-  const sendMessage = useCallback(
-    (text: string) => {
-      if (!text.trim() || loading) return;
-
-      const userMsg: ChatMessage = { role: "user", content: text.trim() };
-      const assistantMsg: ChatMessage = { role: "assistant", content: "", toolCalls: [] };
-
-      setMessages((prev) => [...prev, userMsg, assistantMsg]);
-      setInput("");
-      setLoading(true);
-      setCurrentTool(null);
-      setShowHistory(false);
-
-      const controller = streamAiChat(text.trim(), sessionId, {
-        onText: (delta) => {
-          setMessages((prev) => {
-            const updated = [...prev];
-            const last = updated[updated.length - 1];
-            if (last.role === "assistant") {
-              updated[updated.length - 1] = { ...last, content: last.content + delta };
-            }
-            return updated;
-          });
-        },
-        onToolCall: (toolName) => {
-          setCurrentTool(toolName);
-          setMessages((prev) => {
-            const updated = [...prev];
-            const last = updated[updated.length - 1];
-            if (last.role === "assistant") {
-              updated[updated.length - 1] = {
-                ...last,
-                toolCalls: [...(last.toolCalls ?? []), toolName],
-              };
-            }
-            return updated;
-          });
-        },
-        onError: (error) => {
-          setCurrentTool(null);
-          setLoading(false);
-          setMessages((prev) => {
-            const updated = [...prev];
-            const last = updated[updated.length - 1];
-            if (last.role === "assistant" && !last.content) {
-              updated[updated.length - 1] = { ...last, content: `⚠️ ${error}` };
-            }
-            return updated;
-          });
-        },
-        onDone: () => {
-          setCurrentTool(null);
-          setLoading(false);
-          // 刷新会话列表（标题可能已更新）
-          loadSessions();
-        },
-      });
-
-      abortRef.current = controller;
-    },
-    [loading, sessionId],
-  );
+  function sendMessage(text: string) {
+    setShowHistory(false);
+    send(text);
+  }
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendMessage(input);
     }
-  }
-
-  function handleStop() {
-    abortRef.current?.abort();
-    setLoading(false);
-    setCurrentTool(null);
   }
 
   if (!open) {
@@ -486,7 +360,7 @@ export function AiCopilot() {
           {loading ? (
             <button
               type="button"
-              onClick={handleStop}
+              onClick={stop}
               className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-200 text-slate-500 transition hover:bg-slate-300"
               title="停止生成"
             >

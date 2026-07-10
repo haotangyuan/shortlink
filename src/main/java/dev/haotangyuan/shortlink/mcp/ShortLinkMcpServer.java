@@ -132,7 +132,7 @@ public class ShortLinkMcpServer {
                         return new McpSchema.CallToolResult(List.of(new McpSchema.TextContent(text)), false);
                     } catch (Exception e) {
                         log.error("MCP: Failed to create short link", e);
-                        return new McpSchema.CallToolResult("Failed to create short link: " + e.getMessage(), true);
+                        return new McpSchema.CallToolResult("Failed to create short link", true);
                     } finally {
                         UserContext.removeUser();
                     }

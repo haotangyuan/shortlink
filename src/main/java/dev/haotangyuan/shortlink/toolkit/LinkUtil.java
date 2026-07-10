@@ -6,22 +6,16 @@ import cn.hutool.core.util.StrUtil;
 import cn.hutool.core.util.URLUtil;
 import com.google.common.net.InternetDomainName;
 import dev.haotangyuan.shortlink.common.config.GotoDomainWhiteListConfiguration;
-import dev.haotangyuan.shortlink.toolkit.ipgeo.GeoInfo;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
 import java.net.IDN;
+import java.net.InetAddress;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static dev.haotangyuan.shortlink.common.constant.LinkConstant.DEFAULT_CACHE_VALID_TIME;
 
@@ -159,7 +153,12 @@ public class LinkUtil {
         String u = url.trim();
         if (!u.matches("^[a-zA-Z][a-zA-Z0-9+.-]*://.*$")) u = "http://" + u; // 补scheme
 
-        URL parsed = URLUtil.url(u);
+        URL parsed;
+        try {
+            parsed = URLUtil.url(u);
+        } catch (Exception ex) {
+            return null;
+        }
         String host = parsed.getHost();
         if (StrUtil.isBlank(host)) return null;
 
@@ -184,6 +183,56 @@ public class LinkUtil {
     }
 
     /**
+     * 判断 URL 是否为公网域名的 HTTP(S) 链接。
+     */
+    public static boolean isPublicHttpUrl(String url) {
+        if (StrUtil.isBlank(url)) return false;
+        String normalized = url.trim();
+        if (!normalized.matches("^[a-zA-Z][a-zA-Z0-9+.-]*://.*$")) {
+            normalized = "http://" + normalized;
+        }
+        try {
+            URL parsed = URLUtil.url(normalized);
+            String protocol = parsed.getProtocol();
+            return ("http".equalsIgnoreCase(protocol) || "https".equalsIgnoreCase(protocol))
+                    && extractDomain(normalized) != null;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    /**
+     * 判断 URL 是否为解析到公网地址的 HTTP(S) 链接。
+     */
+    public static boolean isSafePublicHttpUrl(String url) {
+        if (!isPublicHttpUrl(url)) return false;
+        String normalized = url.trim();
+        if (!normalized.matches("^[a-zA-Z][a-zA-Z0-9+.-]*://.*$")) {
+            normalized = "http://" + normalized;
+        }
+        try {
+            URL parsed = URLUtil.url(normalized);
+            InetAddress[] addresses = InetAddress.getAllByName(parsed.getHost());
+            if (addresses.length == 0) return false;
+            for (InetAddress address : addresses) {
+                byte[] bytes = address.getAddress();
+                boolean uniqueLocalIpv6 = bytes.length == 16 && (bytes[0] & 0xfe) == 0xfc;
+                if (address.isAnyLocalAddress()
+                        || address.isLoopbackAddress()
+                        || address.isLinkLocalAddress()
+                        || address.isSiteLocalAddress()
+                        || address.isMulticastAddress()
+                        || uniqueLocalIpv6) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception ex) {
+            return false;
+        }
+    }
+
+    /**
      * 获取站点 favicon
      */
     public String getFavicon(String url) {
@@ -192,13 +241,22 @@ public class LinkUtil {
         if (!u.matches("^[a-zA-Z][a-zA-Z0-9+.-]*://.*$")) {
             u = "http://" + u;
         }
-        URL parsed = URLUtil.url(u);
+        URL parsed;
+        try {
+            parsed = URLUtil.url(u);
+        } catch (Exception ex) {
+            return null;
+        }
         String scheme = parsed.getProtocol();
         String host = parsed.getHost();
         int port = parsed.getPort();
-        if (StrUtil.isBlank(host)) return null;
+        if (StrUtil.isBlank(host)
+                || !("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
+            return null;
+        }
 
         String domain = extractDomain(u);
+        if (domain == null) return null;
         // 白名单：使用硬编码映射，避免网络抓取
         if (whiteListCfg != null && Boolean.TRUE.equals(whiteListCfg.getEnable())
                 && whiteListCfg.getDetails() != null && domain != null
@@ -208,79 +266,12 @@ public class LinkUtil {
             return "https://" + domain + "/favicon.ico";
         }
 
-        // 非白名单：保留原有网络抓取逻辑
-        try {
-            String baseUrl;
-            StringBuilder base = new StringBuilder()
-                    .append(scheme).append("://").append(host);
-            if (port > 0 && port != parsed.getDefaultPort()) {
-                base.append(":").append(port);
-            }
-            baseUrl = base.toString();
-
-            // 抓取页面 HTML（限 32KB）
-            String html = null;
-            try {
-                HttpURLConnection conn = (HttpURLConnection) new URL(u).openConnection();
-                conn.setConnectTimeout(2000);
-                conn.setReadTimeout(2000);
-                conn.setInstanceFollowRedirects(true);
-                conn.setRequestProperty("User-Agent", "Mozilla/5.0");
-                int code = conn.getResponseCode();
-                if (code >= 200 && code < 300) {
-                    StringBuilder sb = new StringBuilder();
-                    try (InputStream in = conn.getInputStream();
-                         InputStreamReader reader = new InputStreamReader(in, StandardCharsets.UTF_8)) {
-                        char[] buf = new char[4096];
-                        int len;
-                        int total = 0;
-                        while ((len = reader.read(buf)) != -1 && total < 32768) {
-                            sb.append(buf, 0, len);
-                            total += len;
-                        }
-                    }
-                    html = sb.toString();
-                }
-            } catch (Exception ignore) {
-            }
-
-            // 解析 <link rel="icon" ...>
-            if (StrUtil.isNotBlank(html)) {
-                Pattern p = Pattern.compile("(?i)<link[^>]+rel=[\"'](?:shortcut\\s+)?icon[\"'][^>]*href=[\"']([^\"']+)[\"']");
-                Matcher m = p.matcher(html);
-                if (m.find()) {
-                    String iconHref = m.group(1).trim();
-                    if (iconHref.startsWith("http://") || iconHref.startsWith("https://")) {
-                        return iconHref;
-                    } else if (iconHref.startsWith("//")) {
-                        return scheme + ":" + iconHref;
-                    } else if (iconHref.startsWith("/")) {
-                        return baseUrl + iconHref;
-                    } else {
-                        return baseUrl + "/" + iconHref;
-                    }
-                }
-            }
-
-            // 回退 /favicon.ico（尝试 GET 以确认返回类型）
-            String fallback = baseUrl + "/favicon.ico";
-            try {
-                HttpURLConnection c = (HttpURLConnection) new URL(fallback).openConnection();
-                c.setRequestMethod("GET");
-                c.setConnectTimeout(1500);
-                c.setReadTimeout(1500);
-                c.setRequestProperty("User-Agent", "Mozilla/5.0");
-                int code = c.getResponseCode();
-                String ct = c.getContentType();
-                if (code >= 200 && code < 300 && ct != null && ct.toLowerCase().startsWith("image")) {
-                    return fallback;
-                }
-            } catch (Exception ignore) {
-            }
-        } catch (Exception ignore) {
+        StringBuilder baseUrl = new StringBuilder()
+                .append(scheme).append("://").append(host);
+        if (port > 0 && port != parsed.getDefaultPort()) {
+            baseUrl.append(":").append(port);
         }
-
-        return null;
+        return baseUrl.append("/favicon.ico").toString();
     }
 
     /**

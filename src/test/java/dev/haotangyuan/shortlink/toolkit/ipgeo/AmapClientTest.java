@@ -36,4 +36,13 @@ class AmapClientTest {
             server.stop(0);
         }
     }
+
+    @Test
+    void returnsUnknownGeoInfoWhenProviderIsUnavailable() {
+        GeoInfo result = new AmapClient("key", "http://127.0.0.1:1/ip", 100).query("1.1.1.1");
+
+        assertNotNull(result);
+        assertEquals("Unknown", result.getCountry());
+        assertEquals("Unknown", result.getCity());
+    }
 }

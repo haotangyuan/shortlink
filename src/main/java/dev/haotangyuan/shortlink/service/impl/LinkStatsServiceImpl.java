@@ -4,11 +4,10 @@ import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateField;
 import cn.hutool.core.date.DateUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import dev.haotangyuan.shortlink.common.biz.user.GroupOwnershipVerifier;
+import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
 import dev.haotangyuan.shortlink.dao.entity.*;
 import dev.haotangyuan.shortlink.dao.mapper.*;
 import dev.haotangyuan.shortlink.dto.req.GroupStatsAccessRecordReqDTO;
@@ -18,7 +17,6 @@ import dev.haotangyuan.shortlink.dto.req.LinkStatsReqDTO;
 import dev.haotangyuan.shortlink.vo.*;
 import dev.haotangyuan.shortlink.service.LinkStatsService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -28,12 +26,10 @@ import java.util.*;
  *
  * @author: haotangyuan
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LinkStatsServiceImpl implements LinkStatsService {
 
-    private final GroupMapper groupMapper;
     private final GroupOwnershipVerifier groupOwnershipService;
     private final LinkAccessStatsMapper linkAccessStatsMapper;
     private final LinkLocaleStatsMapper linkLocaleStatsMapper;
@@ -45,7 +41,8 @@ public class LinkStatsServiceImpl implements LinkStatsService {
 
     @Override
     public LinkStatsVO oneShortLinkStats(LinkStatsReqDTO linkStatsReqDTO) {
-        linkStatsReqDTO.setEndDate(normalizeEndDate(linkStatsReqDTO.getEndDate()));
+        linkStatsReqDTO.setEndDate(normalizeAndValidateEndDate(
+                linkStatsReqDTO.getStartDate(), linkStatsReqDTO.getEndDate()));
         if (linkStatsReqDTO.getEnableStatus() == null) {
             linkStatsReqDTO.setEnableStatus(0);
         }
@@ -58,30 +55,8 @@ public class LinkStatsServiceImpl implements LinkStatsService {
             pvUvUidStatsByShortLink = new LinkAccessStatsDO();
         }
         // 基础访问详情
-        List<LinkStatsAccessDailyVO> daily = new ArrayList<>();
-        List<String> rangeDates = DateUtil.rangeToList(DateUtil.parse(linkStatsReqDTO.getStartDate()), DateUtil.parse(linkStatsReqDTO.getEndDate()), DateField.DAY_OF_MONTH).stream()
-                .map(DateUtil::formatDate)
-                .toList();
-        rangeDates.forEach(each -> listStatsByShortLink.stream()
-                .filter(item -> Objects.equals(each, DateUtil.formatDate(item.getDate())))
-                .findFirst()
-                .ifPresentOrElse(item -> {
-                    LinkStatsAccessDailyVO accessDailyRespDTO = LinkStatsAccessDailyVO.builder()
-                            .date(each)
-                            .pv(item.getPv())
-                            .uv(item.getUv())
-                            .uip(item.getUip())
-                            .build();
-                    daily.add(accessDailyRespDTO);
-                }, () -> {
-                    LinkStatsAccessDailyVO accessDailyRespDTO = LinkStatsAccessDailyVO.builder()
-                            .date(each)
-                            .pv(0)
-                            .uv(0)
-                            .uip(0)
-                            .build();
-                    daily.add(accessDailyRespDTO);
-                }));
+        List<LinkStatsAccessDailyVO> daily = buildDailyStats(
+                linkStatsReqDTO.getStartDate(), linkStatsReqDTO.getEndDate(), listStatsByShortLink);
         // 地区访问详情
         List<LinkStatsLocaleCNVO> localeCnStats = new ArrayList<>();
         List<LinkLocaleStatsDO> listedLocaleByShortLink = linkLocaleStatsMapper.listLocaleByShortLink(linkStatsReqDTO);
@@ -243,81 +218,37 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     @Override
     public IPage<LinkStatsAccessRecordVO> shortLinkStatsAccessRecord(LinkStatsAccessRecordReqDTO linkStatsAccessRecordReqDTO) {
         groupOwnershipService.assertOwnedByCurrentUser(linkStatsAccessRecordReqDTO.getGid());
-        linkStatsAccessRecordReqDTO.setEndDate(normalizeEndDate(linkStatsAccessRecordReqDTO.getEndDate()));
-        LambdaQueryWrapper<LinkAccessLogsDO> queryWrapper = Wrappers.lambdaQuery(LinkAccessLogsDO.class)
-                .eq(LinkAccessLogsDO::getFullShortUrl, linkStatsAccessRecordReqDTO.getFullShortUrl())
-                .ge(LinkAccessLogsDO::getCreateTime, linkStatsAccessRecordReqDTO.getStartDate())
-                .le(LinkAccessLogsDO::getCreateTime, linkStatsAccessRecordReqDTO.getEndDate())
-                .eq(LinkAccessLogsDO::getDelFlag, 0)
-                .orderByDesc(LinkAccessLogsDO::getCreateTime);
-        Page<LinkAccessLogsDO> page = new Page<>(linkStatsAccessRecordReqDTO.getCurrent(), linkStatsAccessRecordReqDTO.getSize());
-        IPage<LinkAccessLogsDO> linkAccessLogsDOIPage = linkAccessLogsMapper.selectPage(page, queryWrapper);
-        if (CollUtil.isEmpty(linkAccessLogsDOIPage.getRecords())) {
-            return new Page<>(linkStatsAccessRecordReqDTO.getCurrent(), linkStatsAccessRecordReqDTO.getSize());
+        linkStatsAccessRecordReqDTO.setEndDate(normalizeAndValidateEndDate(
+                linkStatsAccessRecordReqDTO.getStartDate(), linkStatsAccessRecordReqDTO.getEndDate()));
+        if (linkStatsAccessRecordReqDTO.getEnableStatus() == null) {
+            linkStatsAccessRecordReqDTO.setEnableStatus(0);
         }
-        IPage<LinkStatsAccessRecordVO> actualResult = linkAccessLogsDOIPage.convert(each -> {
+        Page<LinkAccessLogsDO> page = new Page<>(linkStatsAccessRecordReqDTO.getCurrent(), linkStatsAccessRecordReqDTO.getSize());
+        IPage<LinkAccessLogsDO> linkAccessLogsDOIPage = linkAccessLogsMapper.selectLinkPage(page, linkStatsAccessRecordReqDTO);
+        return linkAccessLogsDOIPage.convert(each -> {
             LinkStatsAccessRecordVO linkStatsAccessRecordRespDTO = BeanUtil.toBean(each, LinkStatsAccessRecordVO.class);
             linkStatsAccessRecordRespDTO.setUvType(Boolean.TRUE.equals(each.getFirstFlag()) ? "新访客" : "老访客");
             return linkStatsAccessRecordRespDTO;
         });
-        return actualResult;
     }
 
     @Override
     public LinkStatsVO groupShortLinkStats(GroupStatsReqDTO groupStatsReqDTO) {
-        groupStatsReqDTO.setEndDate(normalizeEndDate(groupStatsReqDTO.getEndDate()));
+        groupStatsReqDTO.setEndDate(normalizeAndValidateEndDate(
+                groupStatsReqDTO.getStartDate(), groupStatsReqDTO.getEndDate()));
         groupOwnershipService.assertOwnedByCurrentUser(groupStatsReqDTO.getGid());
         List<LinkAccessStatsDO> listStatsByGroup = Optional.ofNullable(linkAccessStatsMapper.listStatsByGroup(groupStatsReqDTO))
                 .orElse(Collections.emptyList());
 
-        int totalPv = listStatsByGroup.stream()
-                .mapToInt(item -> Optional.ofNullable(item.getPv()).orElse(0))
-                .sum();
-        int totalUv = listStatsByGroup.stream()
-                .mapToInt(item -> Optional.ofNullable(item.getUv()).orElse(0))
-                .sum();
-        int totalUip = listStatsByGroup.stream()
-                .mapToInt(item -> Optional.ofNullable(item.getUip()).orElse(0))
-                .sum();
+        LinkAccessStatsDO aggregateStats = Optional.ofNullable(
+                linkAccessLogsMapper.findPvUvUidStatsByGroup(groupStatsReqDTO)
+        ).orElseGet(LinkAccessStatsDO::new);
+        int totalPv = Optional.ofNullable(aggregateStats.getPv()).orElse(0);
+        int totalUv = Optional.ofNullable(aggregateStats.getUv()).orElse(0);
+        int totalUip = Optional.ofNullable(aggregateStats.getUip()).orElse(0);
 
-        // 基础访问详情（即使 listStatsByGroup 为空也继续构造）
-        List<LinkStatsAccessDailyVO> daily = new ArrayList<>();
-        List<String> rangeDates = DateUtil.rangeToList(DateUtil.parse(groupStatsReqDTO.getStartDate()), DateUtil.parse(groupStatsReqDTO.getEndDate()), DateField.DAY_OF_MONTH).stream()
-                .map(DateUtil::formatDate)
-                .toList();
-        rangeDates.forEach(each -> {
-            if (CollUtil.isNotEmpty(listStatsByGroup)) {
-                listStatsByGroup.stream()
-                        .filter(item -> Objects.equals(each, DateUtil.formatDate(item.getDate())))
-                        .findFirst()
-                        .ifPresentOrElse(item -> {
-                            LinkStatsAccessDailyVO accessDailyRespDTO = LinkStatsAccessDailyVO.builder()
-                                    .date(each)
-                                    .pv(item.getPv())
-                                    .uv(item.getUv())
-                                    .uip(item.getUip())
-                                    .build();
-                            daily.add(accessDailyRespDTO);
-                        }, () -> {
-                            LinkStatsAccessDailyVO accessDailyRespDTO = LinkStatsAccessDailyVO.builder()
-                                    .date(each)
-                                    .pv(0)
-                                    .uv(0)
-                                    .uip(0)
-                                    .build();
-                            daily.add(accessDailyRespDTO);
-                        });
-            } else {
-                // listStatsByGroup 为空时，所有日期返回0
-                LinkStatsAccessDailyVO accessDailyRespDTO = LinkStatsAccessDailyVO.builder()
-                        .date(each)
-                        .pv(0)
-                        .uv(0)
-                        .uip(0)
-                        .build();
-                daily.add(accessDailyRespDTO);
-            }
-        });
+        List<LinkStatsAccessDailyVO> daily = buildDailyStats(
+                groupStatsReqDTO.getStartDate(), groupStatsReqDTO.getEndDate(), listStatsByGroup);
         // 地区访问详情（仅国内）
         List<LinkStatsLocaleCNVO> localeCnStats = new ArrayList<>();
         List<LinkLocaleStatsDO> listedLocaleByGroup = linkLocaleStatsMapper.listLocaleByGroup(groupStatsReqDTO);
@@ -453,23 +384,66 @@ public class LinkStatsServiceImpl implements LinkStatsService {
     @Override
     public IPage<LinkStatsAccessRecordVO> groupShortLinkStatsAccessRecord(GroupStatsAccessRecordReqDTO groupStatsAccessRecordReqDTO) {
         groupOwnershipService.assertOwnedByCurrentUser(groupStatsAccessRecordReqDTO.getGid());
-        groupStatsAccessRecordReqDTO.setEndDate(normalizeEndDate(groupStatsAccessRecordReqDTO.getEndDate()));
+        groupStatsAccessRecordReqDTO.setEndDate(normalizeAndValidateEndDate(
+                groupStatsAccessRecordReqDTO.getStartDate(), groupStatsAccessRecordReqDTO.getEndDate()));
         Page<LinkAccessLogsDO> page = new Page<>(groupStatsAccessRecordReqDTO.getCurrent(), groupStatsAccessRecordReqDTO.getSize());
         IPage<LinkAccessLogsDO> linkAccessLogsDOIPage = linkAccessLogsMapper.selectGroupPage(page, groupStatsAccessRecordReqDTO);
-        if (CollUtil.isEmpty(linkAccessLogsDOIPage.getRecords())) {
-            return new Page<>(groupStatsAccessRecordReqDTO.getCurrent(), groupStatsAccessRecordReqDTO.getSize());
-        }
-        IPage<LinkStatsAccessRecordVO> actualResult = linkAccessLogsDOIPage
-                .convert(each -> {
-                    LinkStatsAccessRecordVO linkStatsAccessRecordRespDTO = BeanUtil.toBean(each, LinkStatsAccessRecordVO.class);
-                    linkStatsAccessRecordRespDTO.setUvType(Boolean.TRUE.equals(each.getFirstFlag()) ? "新访客" : "老访客");
-                    return linkStatsAccessRecordRespDTO;
-                });
-        return actualResult;
+        return linkAccessLogsDOIPage.convert(each -> {
+            LinkStatsAccessRecordVO linkStatsAccessRecordRespDTO = BeanUtil.toBean(each, LinkStatsAccessRecordVO.class);
+            linkStatsAccessRecordRespDTO.setUvType(Boolean.TRUE.equals(each.getFirstFlag()) ? "新访客" : "老访客");
+            return linkStatsAccessRecordRespDTO;
+        });
     }
 
-    private static String normalizeEndDate(String endDate) {
-        return endDate != null && !endDate.contains(" ") ? endDate + " 23:59:59" : endDate;
+    private static List<LinkStatsAccessDailyVO> buildDailyStats(
+            String startDate,
+            String endDate,
+            List<LinkAccessStatsDO> stats) {
+        Map<String, LinkAccessStatsDO> statsByDate = stats.stream()
+                .filter(each -> each.getDate() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        each -> DateUtil.formatDate(each.getDate()),
+                        each -> each,
+                        (first, ignored) -> first
+                ));
+        return DateUtil.rangeToList(
+                        DateUtil.parse(startDate),
+                        DateUtil.parse(endDate),
+                        DateField.DAY_OF_MONTH
+                ).stream()
+                .map(DateUtil::formatDate)
+                .map(date -> {
+                    LinkAccessStatsDO dailyStats = statsByDate.get(date);
+                    return LinkStatsAccessDailyVO.builder()
+                            .date(date)
+                            .pv(dailyStats == null ? 0 : Optional.ofNullable(dailyStats.getPv()).orElse(0))
+                            .uv(dailyStats == null ? 0 : Optional.ofNullable(dailyStats.getUv()).orElse(0))
+                            .uip(dailyStats == null ? 0 : Optional.ofNullable(dailyStats.getUip()).orElse(0))
+                            .build();
+                })
+                .toList();
+    }
+
+    private static String normalizeAndValidateEndDate(String startDate, String endDate) {
+        if (startDate == null || startDate.isBlank() || endDate == null || endDate.isBlank()) {
+            throw new ClientException("统计日期不能为空");
+        }
+        String normalizedEndDate = endDate.contains(" ") ? endDate : endDate + " 23:59:59";
+        try {
+            Date start = DateUtil.parse(startDate);
+            Date end = DateUtil.parse(normalizedEndDate);
+            if (start.after(end)) {
+                throw new ClientException("开始日期不能晚于结束日期");
+            }
+            if (DateUtil.betweenDay(start, end, true) > 366) {
+                throw new ClientException("单次最多查询 366 天统计数据");
+            }
+            return normalizedEndDate;
+        } catch (ClientException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new ClientException("统计日期格式不正确");
+        }
     }
 
     private static double calculateRatio(int cnt, int sum) {

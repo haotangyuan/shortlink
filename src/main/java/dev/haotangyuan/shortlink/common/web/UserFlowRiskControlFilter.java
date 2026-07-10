@@ -1,7 +1,6 @@
 package dev.haotangyuan.shortlink.common.web;
 
 import com.alibaba.fastjson2.JSON;
-import com.google.common.collect.Lists;
 import dev.haotangyuan.shortlink.common.biz.user.UserContext;
 import dev.haotangyuan.shortlink.common.config.UserFlowRiskControlConfiguration;
 import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
@@ -10,7 +9,6 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -19,6 +17,7 @@ import org.springframework.scripting.support.ResourceScriptSource;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Collections;
 
 import static dev.haotangyuan.shortlink.common.constant.UserConstant.PUBLIC_USERNAME;
 import static dev.haotangyuan.shortlink.common.convention.errorcode.BaseErrorCode.FLOW_LIMIT_ERROR;
@@ -44,7 +43,6 @@ public class UserFlowRiskControlFilter implements Filter {
         REDIS_SCRIPT.setResultType(Long.class);
     }
 
-    @SneakyThrows
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain) throws IOException, ServletException {
         String username = UserContext.getUsername();
@@ -55,8 +53,8 @@ public class UserFlowRiskControlFilter implements Filter {
         }
         Long result;
         try {
-            result = stringRedisTemplate.execute(REDIS_SCRIPT, Lists.newArrayList(username), String.valueOf(userFlowRiskControlConfiguration.getTimeWindow()));
-        } catch (Throwable ex) {
+            result = stringRedisTemplate.execute(REDIS_SCRIPT, Collections.singletonList(username), String.valueOf(userFlowRiskControlConfiguration.getTimeWindow()));
+        } catch (Exception ex) {
             log.error("执行用户请求流量限制LUA脚本出错", ex);
             tooMany((HttpServletResponse) response);
             return;

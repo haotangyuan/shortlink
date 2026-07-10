@@ -1,9 +1,13 @@
 -- hll_count_add_delta.lua
 -- KEYS[1] = HLL key  (uv/uip)
 -- KEYS[2] = active set key (uv/uip)
+-- KEYS[3] = message delta key (retry-safe)
 -- ARGV[1] = member (uv/ip)
 -- ARGV[2] = fullShortUrl (for active set)
 -- ARGV[3] = ttlSeconds (int, e.g. 259200)
+-- ARGV[4] = deltaTtlSeconds
+local cached = redis.call('GET', KEYS[3])
+if cached then return tonumber(cached) end
 local before = redis.call('PFCOUNT', KEYS[1])
 redis.call('PFADD', KEYS[1], ARGV[1])
 -- 将 fsu 记入活跃集合（幂等）
@@ -16,4 +20,5 @@ if not ttl2 or ttl2 < 0 then redis.call('EXPIRE', KEYS[2], ARGV[3]) end
 local after = redis.call('PFCOUNT', KEYS[1])
 local delta = after - before
 if delta < 0 then delta = 0 end
+redis.call('SET', KEYS[3], tostring(delta), 'EX', ARGV[4])
 return delta

@@ -28,12 +28,21 @@ import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.API_TOK
 @RequiredArgsConstructor
 public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implements TokenService {
 
+    private static final int MAX_TOKEN_COUNT = 20;
+
     private final StringRedisTemplate stringRedisTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String createToken(TokenCreateReqDTO req) {
         String username = Objects.requireNonNull(UserContext.getUsername(), "用户未登录");
+        validateCreateRequest(req);
+        long tokenCount = baseMapper.selectCount(Wrappers.lambdaQuery(TokenDO.class)
+                .eq(TokenDO::getUsername, username)
+                .eq(TokenDO::getDelFlag, 0));
+        if (tokenCount >= MAX_TOKEN_COUNT) {
+            throw new ClientException("每个用户最多创建 " + MAX_TOKEN_COUNT + " 个令牌");
+        }
         String token = java.util.UUID.randomUUID().toString().replace("-", "");
         String tokenHash = sha256Hex(token);
         String last4 = token.substring(Math.max(0, token.length() - 4));
@@ -46,7 +55,9 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
                 .validDate(req.getValidDate())
                 .describe(req.getDescribe())
                 .build();
-        baseMapper.insert(entity);
+        if (baseMapper.insert(entity) < 1) {
+            throw new ClientException("创建令牌失败");
+        }
         writeRedisMapping(tokenHash, username, req.getValidDate());
         return token;
     }
@@ -80,7 +91,9 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
         }
         deleteRedisMapping(token.getTokenHash());
         token.setDelFlag(1);
-        baseMapper.updateById(token);
+        if (baseMapper.updateById(token) < 1) {
+            throw new ClientException("删除令牌失败");
+        }
     }
 
     @Override
@@ -96,12 +109,16 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
                 throw new ClientException("令牌已过期");
             }
             token.setEnableStatus(0);
-            baseMapper.updateById(token);
+            if (baseMapper.updateById(token) < 1) {
+                throw new ClientException("更新令牌失败");
+            }
             writeRedisMapping(token.getTokenHash(), username, token.getValidDate());
         } else {
             deleteRedisMapping(token.getTokenHash());
             token.setEnableStatus(1);
-            baseMapper.updateById(token);
+            if (baseMapper.updateById(token) < 1) {
+                throw new ClientException("更新令牌失败");
+            }
         }
     }
 
@@ -135,6 +152,21 @@ public class TokenServiceImpl extends ServiceImpl<TokenMapper, TokenDO> implemen
     private String mask(String last4) {
         if (StrUtil.isBlank(last4)) return "";
         return "****" + last4;
+    }
+
+    private void validateCreateRequest(TokenCreateReqDTO req) {
+        if (req == null) {
+            throw new ClientException("令牌参数不能为空");
+        }
+        if (req.getName() != null && req.getName().length() > 128) {
+            throw new ClientException("令牌名称过长");
+        }
+        if (req.getDescribe() != null && req.getDescribe().length() > 255) {
+            throw new ClientException("令牌描述过长");
+        }
+        if (req.getValidDate() != null && !req.getValidDate().after(new java.util.Date())) {
+            throw new ClientException("令牌过期时间无效");
+        }
     }
 
     private String sha256Hex(String s) {

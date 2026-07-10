@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.SESSION_KEY;
 import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.USER_GIDS_KEY;
+import static dev.haotangyuan.shortlink.common.constant.RedisKeyConstant.USER_LOGIN_KEY;
 import static dev.haotangyuan.shortlink.common.constant.UserConstant.PUBLIC_USERNAME;
 import static dev.haotangyuan.shortlink.common.convention.errorcode.BaseErrorCode.USER_TOKEN_FAIL;
 
@@ -72,10 +73,11 @@ public class UserTransmitFilter implements Filter {
                         }
                         // 仅会话续期，不对 gid 索引续期
                         stringRedisTemplate.expire(key, sessionTtlMinutes, TimeUnit.MINUTES);
+                        expireLoginTokenIndexTTL(username);
                         // 仅刷新该用户 GID 正向索引集合 TTL（不回库、不补全）
                         expireUserGidsTTL(username);
-                    } catch (Throwable t) {
-                        log.error("Admin session validate error", t);
+                    } catch (Exception ex) {
+                        log.error("Admin session validate error", ex);
                         unauthorized((HttpServletResponse) servletResponse);
                         return;
                     }
@@ -96,8 +98,16 @@ public class UserTransmitFilter implements Filter {
         String setKey = String.format(USER_GIDS_KEY, username);
         try {
             stringRedisTemplate.expire(setKey, sessionTtlMinutes, java.util.concurrent.TimeUnit.MINUTES);
-        } catch (Throwable t) {
-            log.error("Expire user_gids TTL error, username={}", username, t);
+        } catch (Exception ex) {
+            log.error("Expire user_gids TTL error, username={}", username, ex);
+        }
+    }
+
+    private void expireLoginTokenIndexTTL(String username) {
+        try {
+            stringRedisTemplate.expire(USER_LOGIN_KEY + username, sessionTtlMinutes, TimeUnit.MINUTES);
+        } catch (Exception ex) {
+            log.error("Expire login token index TTL error, username={}", username, ex);
         }
     }
 

@@ -2,7 +2,6 @@ package dev.haotangyuan.shortlink.service.impl;
 
 import dev.haotangyuan.shortlink.common.biz.user.GroupOwnershipVerifier;
 import dev.haotangyuan.shortlink.dao.entity.LinkDO;
-import dev.haotangyuan.shortlink.dao.mapper.LinkAccessStatsMapper;
 import dev.haotangyuan.shortlink.dao.mapper.LinkMapper;
 import dev.haotangyuan.shortlink.dto.req.RecycleBinSaveReqDTO;
 import org.junit.jupiter.api.Test;
@@ -15,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class RecycleBinServiceImplTest {
 
@@ -24,10 +24,10 @@ class RecycleBinServiceImplTest {
         GroupOwnershipVerifier ownershipVerifier = mock(GroupOwnershipVerifier.class);
         RecycleBinServiceImpl service = new RecycleBinServiceImpl(
                 mock(StringRedisTemplate.class),
-                ownershipVerifier,
-                mock(LinkAccessStatsMapper.class)
+                ownershipVerifier
         );
         ReflectionTestUtils.setField(service, "baseMapper", linkMapper);
+        when(linkMapper.update(any(), any())).thenReturn(1);
         RecycleBinSaveReqDTO request = new RecycleBinSaveReqDTO();
         request.setGid("group-1");
         request.setFullShortUrl("short.example/abc123");

@@ -18,6 +18,7 @@ function getStorage(): Storage | null {
 }
 
 let sessionToken = getStorage()?.getItem("shortlink.sessionToken") ?? null;
+export const AUTH_CLEARED_EVENT = "shortlink:auth-cleared";
 
 export function setSessionToken(token: string | null) {
   sessionToken = token;
@@ -31,6 +32,14 @@ export function getSessionToken() {
   return sessionToken;
 }
 
+export function clearSessionAfterUnauthorized() {
+  setSessionToken(null);
+  getStorage()?.removeItem("shortlink.username");
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_CLEARED_EVENT));
+  }
+}
+
 export async function request<T>(path: string, init: RequestInit = {}, auth = true): Promise<T> {
   const headers = new Headers(init.headers);
   if (!headers.has("Content-Type") && init.body) headers.set("Content-Type", "application/json");
@@ -40,7 +49,7 @@ export async function request<T>(path: string, init: RequestInit = {}, auth = tr
   const payload = (await response.json().catch(() => null)) as ApiResult<T> | null;
 
   if (response.status === 401) {
-    setSessionToken(null);
+    if (auth) clearSessionAfterUnauthorized();
     throw new ApiError("用户身份验证失败", payload?.code, response.status);
   }
   if (!payload) throw new ApiError("网络请求失败", undefined, response.status);

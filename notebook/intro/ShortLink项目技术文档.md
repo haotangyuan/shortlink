@@ -521,9 +521,7 @@ flowchart TD
     D -- "是" --> R["记录统计消息并 302"]
     D -- "否" --> E{"Redis goto cache 命中?"}
     E -- "是" --> F["回填 Caffeine"] --> R
-    E -- "否" --> G{"ShortCodeUtil.mightExist 快速否定?"}
-    G -- "否" --> N["302 /page/notfound"]
-    G -- "可能存在" --> H{"Bloom contains fullShortUrl?"}
+    E -- "否" --> H{"Bloom contains fullShortUrl?"}
     H -- "否" --> N
     H -- "是" --> I{"空值缓存存在?"}
     I -- "是" --> N
@@ -647,23 +645,11 @@ private static long mapIndexToY(long i) {
 
 只要 `A` 与 `N` 互素，映射在模 `N` 空间上就是置换，不会因为映射本身产生冲突。
 
-#### 7.2.3 快速否定
+#### 7.2.3 多实例存在性判断
 
-跳转链路使用 `ShortCodeUtil.mightExist(shortUri)` 快速过滤明显未分配的短码：
+跳转链路不再通过反向解码结果与本地 `cursor` 比较来否定短码。Redis 会为不同实例分配互不重叠但不连续的号段，本地游标只描述当前 JVM 的消费进度，无法代表其他实例已创建的短码；异步预取还会提前推进全局计数器，因此本地或全局号段边界都不能作为“短码已创建”的可靠证据。
 
-```java
-public static boolean mightExist(String code) {
-    try {
-        if (code == null || code.length() != LENGTH) return true;
-        long i = decodeToIndex(code);
-        return i <= cursor.get();
-    } catch (Exception e) {
-        return true;
-    }
-}
-```
-
-它只用于“快速否定”。返回 `true` 代表“可能存在”，还需要 Bloom、空值缓存和 DB 校验；返回 `false` 才能直接判定不存在。
+当前由 Bloom Filter 负责快速否定从未创建的短码，空值缓存吸收 Bloom 误判和已删除记录，最终通过 `t_link_goto` 与 `t_link` 完成权威校验。
 
 ### 7.3 示例
 
@@ -1164,11 +1150,10 @@ SELECT * FROM t_link_access_stats WHERE full_short_url = '127.0.0.1:8068/0AbC12'
 
 ```text
 1. shortUri 长度和字符是否符合 Base62
-2. ShortCodeUtil.mightExist 是否可能快速否定
-3. Bloom Filter 是否包含 fullShortUrl
-4. Redis 是否存在空值缓存 short-link:is-null:goto_{fullShortUrl}
-5. t_link_goto 是否有 full_short_url
-6. t_link 对应 gid 分片中是否 enable_status=0、del_flag=0、valid_date 未过期
+2. Bloom Filter 是否包含 fullShortUrl
+3. Redis 是否存在空值缓存 short-link:is-null:goto_{fullShortUrl}
+4. t_link_goto 是否有 full_short_url
+5. t_link 对应 gid 分片中是否 enable_status=0、del_flag=0、valid_date 未过期
 ```
 
 ---

@@ -9,7 +9,6 @@ import dev.haotangyuan.shortlink.common.convention.result.Result;
 import dev.haotangyuan.shortlink.common.convention.result.Results;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -37,7 +36,7 @@ public class GlobalExceptionHandler {
         String exceptionStr = Optional.ofNullable(firstFieldError)
                 .map(FieldError::getDefaultMessage)
                 .orElse(StrUtil.EMPTY);
-        log.error("[{}] {} [ex] {}", request.getMethod(), getUrl(request), exceptionStr);
+        log.warn("[{}] {} [ex] {}", request.getMethod(), getUrl(request), exceptionStr);
         return Results.failure(BaseErrorCode.CLIENT_ERROR.code(), exceptionStr);
     }
 
@@ -47,14 +46,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(value = {AbstractException.class})
     public Result abstractException(HttpServletRequest request, AbstractException ex) {
         if (ex.getCause() != null) {
-            log.error("[{}] {} [ex] {}", request.getMethod(), request.getRequestURL().toString(), ex.toString(), ex.getCause());
+            log.error("[{}] {} [ex] {}", request.getMethod(), getUrl(request), ex.toString(), ex.getCause());
             return Results.failure(ex);
         }
         // 客户端异常（如"密码错误"、"用户不存在"）用 WARN 级别，服务端异常用 ERROR 级别
         if (ex instanceof ClientException) {
-            log.warn("[{}] {} [ex] {}", request.getMethod(), request.getRequestURL().toString(), ex.toString());
+            log.warn("[{}] {} [ex] {}", request.getMethod(), getUrl(request), ex.toString());
         } else {
-            log.error("[{}] {} [ex] {}", request.getMethod(), request.getRequestURL().toString(), ex.toString());
+            log.error("[{}] {} [ex] {}", request.getMethod(), getUrl(request), ex.toString());
         }
         return Results.failure(ex);
     }
@@ -69,9 +68,6 @@ public class GlobalExceptionHandler {
     }
 
     private String getUrl(HttpServletRequest request) {
-        if (StringUtils.isEmpty(request.getQueryString())) {
-            return request.getRequestURL().toString();
-        }
-        return request.getRequestURL().toString() + "?" + request.getQueryString();
+        return request.getRequestURL().toString();
     }
 }

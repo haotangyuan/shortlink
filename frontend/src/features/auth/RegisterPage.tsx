@@ -31,6 +31,10 @@ export function RegisterPage() {
       setError("请输入用户名和密码");
       return;
     }
+    if (form.password.length < 8 || form.password.length > 72) {
+      setError("密码长度应为 8-72 个字符");
+      return;
+    }
     setLoading(true);
     try {
       await adminApi.register({

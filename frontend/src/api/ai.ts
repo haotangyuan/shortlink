@@ -1,4 +1,5 @@
-import { getSessionToken } from "./client";
+import { clearSessionAfterUnauthorized, getSessionToken } from "./client";
+import type { ApiResult } from "./types";
 
 export interface AiStreamCallbacks {
   onText: (delta: string) => void;
@@ -32,7 +33,9 @@ export function streamAiChat(
   })
     .then(async (response) => {
       if (!response.ok) {
-        callbacks.onError(`请求失败: HTTP ${response.status}`);
+        if (response.status === 401) clearSessionAfterUnauthorized();
+        const payload = (await response.json().catch(() => null)) as ApiResult<unknown> | null;
+        callbacks.onError(payload?.message || `请求失败: HTTP ${response.status}`);
         return;
       }
 
@@ -46,7 +49,7 @@ export function streamAiChat(
       let buffer = "";
       let currentEvent = "text"; // SSE default event name when no event: field
       let dataBuffer: string[] = []; // Buffer for multi-line data fields (SSE spec)
-      let doneCalled = false; // 防止 onDone 被重复调用
+      let terminated = false;
 
       // Dispatch the accumulated data buffer as a complete event
       function dispatchEvent() {
@@ -68,17 +71,37 @@ export function streamAiChat(
             callbacks.onToolCall(parsed);
             break;
           case "error":
-            callbacks.onError(parsed);
+            if (!terminated) {
+              terminated = true;
+              callbacks.onError(parsed);
+            }
             break;
           case "done":
-            if (!doneCalled) {
-              doneCalled = true;
+            if (!terminated) {
+              terminated = true;
               callbacks.onDone();
             }
             break;
           case "session_id":
             callbacks.onSessionId?.(parsed);
             break;
+        }
+      }
+
+      function processLine(rawLine: string) {
+        const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine;
+        if (line === "") {
+          dispatchEvent();
+          currentEvent = "text";
+          return;
+        }
+        if (line.startsWith("event:")) {
+          currentEvent = line.slice(6).trim();
+          return;
+        }
+        if (line.startsWith("data:")) {
+          const rawData = line.slice(5);
+          dataBuffer.push(rawData.startsWith(" ") ? rawData.slice(1) : rawData);
         }
       }
 
@@ -90,30 +113,14 @@ export function streamAiChat(
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
 
-        for (const line of lines) {
-          if (line === "") {
-            // Empty line = end of SSE event: dispatch buffered data, then reset
-            dispatchEvent();
-            currentEvent = "text";
-            continue;
-          }
-          if (line.startsWith("event:")) {
-            currentEvent = line.slice(6).trim();
-            continue;
-          }
-          if (line.startsWith("data:")) {
-            // SSE spec: strip only the first space after "data:" if present
-            const rawData = line.slice(5);
-            const data = rawData.startsWith(" ") ? rawData.slice(1) : rawData;
-            dataBuffer.push(data);
-          }
-        }
+        lines.forEach(processLine);
       }
 
-      // Dispatch any remaining buffered data at end of stream
+      buffer += decoder.decode();
+      if (buffer) processLine(buffer);
       dispatchEvent();
-      if (!doneCalled) {
-        doneCalled = true;
+      if (!terminated) {
+        terminated = true;
         callbacks.onDone();
       }
     })

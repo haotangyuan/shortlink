@@ -2,6 +2,7 @@ package dev.haotangyuan.shortlink.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -25,6 +26,7 @@ import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -62,6 +64,7 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
 
     @Override
     public void saveGroup(String username, String groupName) {
+        String normalizedName = validateGroupName(groupName);
         RLock lock = redissonClient.getLock(String.format(LOCK_GROUP_CREATE_KEY, username));
         lock.lock();
         try {
@@ -69,7 +72,7 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
                     .eq(GroupDO::getUsername, username)
                     .eq(GroupDO::getDelFlag, 0);
             List<GroupDO> groupDOList = baseMapper.selectList(queryWrapper);
-            if (CollUtil.isNotEmpty(groupDOList) && groupDOList.size() == groupMaxNum) {
+            if (CollUtil.isNotEmpty(groupDOList) && groupDOList.size() >= groupMaxNum) {
                 throw new ClientException(String.format("已超出最大分组数：%d", groupMaxNum));
             }
             String gid;
@@ -80,9 +83,11 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
                     .gid(gid)
                     .sortOrder(0)
                     .username(username)
-                    .name(groupName)
+                    .name(normalizedName)
                     .build();
-            baseMapper.insert(groupDO);
+            if (baseMapper.insert(groupDO) < 1) {
+                throw new ClientException("创建分组失败");
+            }
             // 维护正向索引集合：user_gids
             try {
                 String key = String.format(USER_GIDS_KEY, username);
@@ -106,24 +111,36 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
 
     @Override
     public void updateGroup(GroupUpdateReqDTO groupUpdateReqDTO) {
+        String normalizedName = validateGroupName(groupUpdateReqDTO.getName());
         LambdaUpdateWrapper<GroupDO> updateWrapper = Wrappers.lambdaUpdate(GroupDO.class)
                 .eq(GroupDO::getDelFlag, 0)
                 .eq(GroupDO::getUsername, UserContext.getUsername())
                 .eq(GroupDO::getGid, groupUpdateReqDTO.getGid());
         GroupDO groupDO = new GroupDO();
-        groupDO.setName(groupUpdateReqDTO.getName());
-        baseMapper.update(groupDO, updateWrapper);
+        groupDO.setName(normalizedName);
+        if (baseMapper.update(groupDO, updateWrapper) < 1) {
+            throw new ClientException("分组不存在");
+        }
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void deleteGroup(String gid) {
+        List<GroupLinkCountQueryVO> groupLinkCounts = linkService.listGroupLinkCount(List.of(gid));
+        boolean hasLinks = groupLinkCounts.stream()
+                .anyMatch(each -> each.getLinkCount() != null && each.getLinkCount() > 0);
+        if (hasLinks) {
+            throw new ClientException("请先移动或删除分组内的短链接");
+        }
         LambdaUpdateWrapper<GroupDO> updateWrapper = Wrappers.lambdaUpdate(GroupDO.class)
                 .eq(GroupDO::getDelFlag, 0)
                 .eq(GroupDO::getUsername, UserContext.getUsername())
                 .eq(GroupDO::getGid, gid);
         GroupDO groupDO = new GroupDO();
         groupDO.setDelFlag(1);
-        baseMapper.update(groupDO, updateWrapper);
+        if (baseMapper.update(groupDO, updateWrapper) < 1) {
+            throw new ClientException("分组不存在");
+        }
         try {
             String key = String.format(USER_GIDS_KEY, UserContext.getUsername());
             stringRedisTemplate.opsForSet().remove(key, gid);
@@ -132,8 +149,12 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
         }
     }
 
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void sortGroup(List<GroupSortReqDTO> groupSortReqDTOs) {
+        if (groupSortReqDTOs == null || groupSortReqDTOs.size() > groupMaxNum) {
+            throw new ClientException("分组排序参数不正确");
+        }
         groupSortReqDTOs.forEach(groupSortReqDTO -> {
             GroupDO groupDO = GroupDO.builder()
                     .sortOrder(groupSortReqDTO.getSortOrder())
@@ -142,7 +163,9 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
                     .eq(GroupDO::getDelFlag, 0)
                     .eq(GroupDO::getUsername, UserContext.getUsername())
                     .eq(GroupDO::getGid, groupSortReqDTO.getGid());
-            baseMapper.update(groupDO, updateWrapper);
+            if (baseMapper.update(groupDO, updateWrapper) < 1) {
+                throw new ClientException("分组不存在");
+            }
         });
     }
 
@@ -161,7 +184,17 @@ public class GroupServiceImpl extends ServiceImpl<GroupMapper, GroupDO> implemen
         groupRespDTOList.forEach(each -> {
             GroupLinkCountQueryVO count = countMap.get(each.getGid());
             each.setLinkCount(count == null ? 0 : count.getLinkCount());
+            each.setTotalPv(count == null || count.getTotalPv() == null ? 0L : count.getTotalPv());
+            each.setTodayPv(count == null || count.getTodayPv() == null ? 0L : count.getTodayPv());
         });
         return groupRespDTOList;
+    }
+
+    private String validateGroupName(String groupName) {
+        String normalizedName = StrUtil.trim(groupName);
+        if (StrUtil.isBlank(normalizedName) || normalizedName.length() > 64) {
+            throw new ClientException("分组名称长度应为 1-64 个字符");
+        }
+        return normalizedName;
     }
 }

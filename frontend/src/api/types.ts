@@ -8,7 +8,7 @@ export type ApiResult<T> = {
 export type UserLoginVO = { token: string };
 
 export type UserVO = {
-  id: number;
+  id: string;
   username: string;
   realName?: string;
   phone?: string;
@@ -30,6 +30,8 @@ export type GroupVO = {
   name: string;
   sortOrder: number;
   linkCount: number;
+  totalPv: number;
+  todayPv: number;
 };
 
 export type GroupSortReq = {
@@ -63,7 +65,7 @@ export type LinkCreateVO = {
 };
 
 export type LinkPageVO = {
-  id: number;
+  id: string;
   domain: string;
   shortUri: string;
   fullShortUrl: string;

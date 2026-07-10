@@ -46,6 +46,7 @@ short-link:
     time-window: 5
     max-access-count: 5
   stats:
+    consumer-count: ${SHORTLINK_STATS_CONSUMER_COUNT:0}
     locale:
       provider: local
       local:

@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -38,6 +39,14 @@ class LinkUtilTest {
         );
 
         assertEquals("Opera", LinkUtil.getBrowser(request));
+    }
+
+    @Test
+    void privateAndNonHttpUrlsAreNotSafeForServerSideFetching() {
+        assertFalse(LinkUtil.isSafePublicHttpUrl("http://127.0.0.1/internal"));
+        assertFalse(LinkUtil.isSafePublicHttpUrl("http://localhost/internal"));
+        assertFalse(LinkUtil.isSafePublicHttpUrl("file:///etc/passwd"));
+        assertFalse(LinkUtil.isPublicHttpUrl("javascript://github.com/payload"));
     }
 
     private HttpServletRequest requestWithUserAgent(String userAgent) {

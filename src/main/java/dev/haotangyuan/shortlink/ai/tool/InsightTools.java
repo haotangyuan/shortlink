@@ -2,6 +2,7 @@ package dev.haotangyuan.shortlink.ai.tool;
 
 import com.alibaba.fastjson2.JSON;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import dev.haotangyuan.shortlink.common.biz.user.UserContext;
 import dev.haotangyuan.shortlink.dto.req.GroupStatsReqDTO;
 import dev.haotangyuan.shortlink.dto.req.LinkPageReqDTO;
 import dev.haotangyuan.shortlink.service.LinkService;
@@ -11,12 +12,13 @@ import dev.haotangyuan.shortlink.vo.LinkStatsAccessDailyVO;
 import dev.haotangyuan.shortlink.vo.LinkStatsVO;
 import io.agentscope.core.tool.Tool;
 import io.agentscope.core.tool.ToolParam;
+import io.agentscope.core.agent.RuntimeContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 /**
  * AI 洞察分析工具
@@ -46,9 +48,10 @@ public class InsightTools {
             @ToolParam(name = "startDate",
                        description = "检测开始日期，格式 yyyy-MM-dd") String startDate,
             @ToolParam(name = "endDate",
-                       description = "检测结束日期，格式 yyyy-MM-dd") String endDate) {
+                       description = "检测结束日期，格式 yyyy-MM-dd") String endDate,
+            RuntimeContext runtimeContext) {
 
-        try {
+        return runAsUser(runtimeContext, "detect_anomalies", "检测失败", () -> {
             GroupStatsReqDTO reqDTO = new GroupStatsReqDTO();
             reqDTO.setGid(gid);
             reqDTO.setStartDate(startDate);
@@ -73,7 +76,7 @@ public class InsightTools {
                 int currUv = curr.getUv() != null ? curr.getUv() : 0;
 
                 // PV 环比下降超过 50%
-                if (prevPv > 0 && currPv > 0) {
+                if (prevPv > 0) {
                     double pvChange = (double) (currPv - prevPv) / prevPv;
                     if (pvChange < -0.5) {
                         Map<String, Object> anomaly = new LinkedHashMap<>();
@@ -106,7 +109,8 @@ public class InsightTools {
             // 检测连续零流量（连续 3 天及以上 PV=0）
             int zeroStreak = 0;
             String streakStart = null;
-            for (LinkStatsAccessDailyVO day : daily) {
+            for (int i = 0; i < daily.size(); i++) {
+                LinkStatsAccessDailyVO day = daily.get(i);
                 int pv = day.getPv() != null ? day.getPv() : 0;
                 if (pv == 0) {
                     if (zeroStreak == 0) {
@@ -117,7 +121,7 @@ public class InsightTools {
                     if (zeroStreak >= 3) {
                         Map<String, Object> anomaly = new LinkedHashMap<>();
                         anomaly.put("type", "连续零流量");
-                        anomaly.put("date", streakStart + " ~ " + daily.get(daily.indexOf(day) - 1).getDate());
+                        anomaly.put("date", streakStart + " ~ " + daily.get(i - 1).getDate());
                         anomaly.put("detail", String.format("连续 %d 天零访问量", zeroStreak));
                         anomaly.put("severity", "high");
                         anomalies.add(anomaly);
@@ -146,10 +150,7 @@ public class InsightTools {
             }
 
             return JSON.toJSONString(result);
-        } catch (Exception e) {
-            log.error("AI tool detect_anomalies error", e);
-            return "{\"error\": \"检测失败: " + e.getMessage() + "\"}";
-        }
+        });
     }
 
     /**
@@ -163,9 +164,10 @@ public class InsightTools {
                       + "当用户问'有没有失效链接'、'检查链接健康'、'清理僵尸链接'时使用此工具。")
     public String getLinkHealth(
             @ToolParam(name = "gid",
-                       description = "分组标识") String gid) {
+                       description = "分组标识") String gid,
+            RuntimeContext runtimeContext) {
 
-        try {
+        return runAsUser(runtimeContext, "get_link_health", "检查失败", () -> {
             LinkPageReqDTO pageReq = new LinkPageReqDTO();
             pageReq.setGid(gid);
             pageReq.setCurrent(1);
@@ -177,7 +179,7 @@ public class InsightTools {
             Date now = new Date();
             List<Map<String, Object>> expired = new ArrayList<>();
             List<Map<String, Object>> zeroTraffic = new ArrayList<>();
-            int totalLinks = links.size();
+            long totalLinks = page.getTotal();
             int healthyCount = 0;
 
             for (LinkPageVO link : links) {
@@ -217,6 +219,8 @@ public class InsightTools {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("gid", gid);
             result.put("totalLinks", totalLinks);
+            result.put("checkedLinks", links.size());
+            result.put("truncated", totalLinks > links.size());
             result.put("healthyCount", healthyCount);
             result.put("expiredLinks", expired);
             result.put("expiredCount", expired.size());
@@ -228,9 +232,35 @@ public class InsightTools {
             }
 
             return JSON.toJSONString(result);
-        } catch (Exception e) {
-            log.error("AI tool get_link_health error", e);
-            return "{\"error\": \"检查失败: " + e.getMessage() + "\"}";
+        });
+    }
+
+    private String runAsUser(
+            RuntimeContext runtimeContext,
+            String operation,
+            String failureMessage,
+            Supplier<String> action) {
+        String username = runtimeContext == null ? null : runtimeContext.getUserId();
+        if (username == null || username.isBlank()) {
+            return errorResponse("用户未登录");
         }
+        String previousUsername = UserContext.getUsername();
+        UserContext.setUsername(username);
+        try {
+            return action.get();
+        } catch (Exception ex) {
+            log.error("AI tool {} error", operation, ex);
+            return errorResponse(failureMessage);
+        } finally {
+            if (previousUsername == null) {
+                UserContext.removeUser();
+            } else {
+                UserContext.setUsername(previousUsername);
+            }
+        }
+    }
+
+    private String errorResponse(String message) {
+        return JSON.toJSONString(Map.of("error", message));
     }
 }

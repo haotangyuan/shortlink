@@ -3,7 +3,7 @@ import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { adminApi } from "../../api/admin";
 import type { LinkCreateVO } from "../../api/types";
-import { Button } from "../../components/ui/Button";
+import { Button, buttonClassName } from "../../components/ui/Button";
 import { Card, CardContent } from "../../components/ui/Card";
 import { CopyButton } from "../../components/ui/CopyButton";
 import { Field } from "../../components/ui/Field";
@@ -46,15 +46,11 @@ export function PublicHomePage() {
               面向团队和开发者的短链接管理平台，支持创建、分组、回收站、访问统计和 API Token。
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href="#create">
-                <Button>
-                  <LinkIcon className="h-4 w-4" />
-                  创建短链接
-                </Button>
+              <a className={buttonClassName()} href="#create">
+                <LinkIcon className="h-4 w-4" />
+                创建短链接
               </a>
-              <Link to="/login">
-                <Button variant="secondary">进入控制台</Button>
-              </Link>
+              <Link className={buttonClassName("secondary")} to="/login">进入控制台</Link>
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
@@ -107,11 +103,14 @@ export function PublicHomePage() {
                 <div className="mt-2 break-all text-base text-emerald-900">{result.fullShortUrl}</div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <CopyButton text={result.fullShortUrl} />
-                  <a href={result.fullShortUrl} target="_blank" rel="noreferrer">
-                    <Button variant="secondary">
-                      <ExternalLink className="h-4 w-4" />
-                      打开
-                    </Button>
+                  <a
+                    className={buttonClassName("secondary")}
+                    href={result.fullShortUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    打开
                   </a>
                 </div>
               </div>

@@ -3,7 +3,7 @@ import type { GroupVO } from "../../api/types";
 import { buildGroupSortPayload } from "./sortGroups";
 
 function group(gid: string): GroupVO {
-  return { gid, name: gid, sortOrder: 0, linkCount: 0 };
+  return { gid, name: gid, sortOrder: 0, linkCount: 0, totalPv: 0, todayPv: 0 };
 }
 
 describe("buildGroupSortPayload", () => {

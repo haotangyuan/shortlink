@@ -28,4 +28,14 @@ public class GroupVO {
      * 分组下短链接数量
      */
     private Integer linkCount;
+
+    /**
+     * 累计访问量
+     */
+    private Long totalPv;
+
+    /**
+     * 今日访问量
+     */
+    private Long todayPv;
 }

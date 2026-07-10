@@ -9,6 +9,7 @@ import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -39,6 +40,9 @@ public class PendingMessageRecoveryTask {
     private static final String STREAM_XAUTOCLAIM_LUA_PATH = "lua/stream_xautoclaim_recover.lua";
     private static final String RECOVER_CURSOR_KEY = "short-link:stats-stream:recover-cursor";
 
+    @Value("${short-link.stats.consumer-instance-id:${HOSTNAME:local}}")
+    private String consumerInstanceId;
+
     @PostConstruct
     public void initScript() {
         autoClaimScript = new DefaultRedisScript<>();
@@ -54,7 +58,7 @@ public class PendingMessageRecoveryTask {
 
             long minIdleMs = Duration.ofMinutes(2).toMillis();
             int count = 200;
-            String consumerName = "stats-recoverer";
+            String consumerName = "stats-recoverer-" + consumerInstanceId;
 
             List<?> res = stringRedisTemplate.execute(
                     autoClaimScript,
@@ -140,4 +144,3 @@ public class PendingMessageRecoveryTask {
         return String.valueOf(obj);
     }
 }
-

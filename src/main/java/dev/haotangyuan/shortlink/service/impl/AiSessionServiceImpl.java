@@ -16,6 +16,7 @@ import dev.haotangyuan.shortlink.vo.AiSessionVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
@@ -32,7 +33,9 @@ public class AiSessionServiceImpl extends ServiceImpl<AiSessionMapper, AiSession
     private final AiMessageMapper aiMessageMapper;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void getOrCreateSession(String sessionId) {
+        validateSessionId(sessionId);
         String username = Objects.requireNonNull(UserContext.getUsername(), "用户未登录");
         // 查询是否已存在
         LambdaQueryWrapper<AiSessionDO> qw = Wrappers.lambdaQuery(AiSessionDO.class)
@@ -51,7 +54,9 @@ public class AiSessionServiceImpl extends ServiceImpl<AiSessionMapper, AiSession
                 .username(username)
                 .title("新对话")
                 .build();
-        baseMapper.insert(session);
+        if (baseMapper.insert(session) < 1) {
+            throw new ClientException("创建会话失败");
+        }
     }
 
     @Override
@@ -89,18 +94,28 @@ public class AiSessionServiceImpl extends ServiceImpl<AiSessionMapper, AiSession
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void saveMessage(String sessionId, String role, String content) {
+        validateSessionId(sessionId);
+        if (!("user".equals(role) || "assistant".equals(role)) || content == null || content.isBlank()) {
+            throw new ClientException("消息内容不正确");
+        }
         AiMessageDO message = AiMessageDO.builder()
                 .sessionId(sessionId)
                 .role(role)
                 .content(content)
                 .build();
-        aiMessageMapper.insert(message);
+        if (aiMessageMapper.insert(message) < 1) {
+            throw new ClientException("保存消息失败");
+        }
         // 更新会话的 update_time
         LambdaUpdateWrapper<AiSessionDO> uw = Wrappers.lambdaUpdate(AiSessionDO.class)
                 .eq(AiSessionDO::getSessionId, sessionId)
+                .eq(AiSessionDO::getDelFlag, 0)
                 .setSql("update_time = NOW()");
-        baseMapper.update(null, uw);
+        if (baseMapper.update(null, uw) < 1) {
+            throw new ClientException("会话不存在");
+        }
     }
 
     @Override
@@ -113,13 +128,16 @@ public class AiSessionServiceImpl extends ServiceImpl<AiSessionMapper, AiSession
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteSession(String sessionId) {
         verifySessionOwnership(sessionId);
         // 逻辑删除会话
         LambdaUpdateWrapper<AiSessionDO> suw = Wrappers.lambdaUpdate(AiSessionDO.class)
                 .eq(AiSessionDO::getSessionId, sessionId)
                 .set(AiSessionDO::getDelFlag, 1);
-        baseMapper.update(null, suw);
+        if (baseMapper.update(null, suw) < 1) {
+            throw new ClientException("会话不存在");
+        }
         // 逻辑删除消息
         LambdaUpdateWrapper<AiMessageDO> muw = Wrappers.lambdaUpdate(AiMessageDO.class)
                 .eq(AiMessageDO::getSessionId, sessionId)
@@ -136,6 +154,7 @@ public class AiSessionServiceImpl extends ServiceImpl<AiSessionMapper, AiSession
     }
 
     private void verifySessionOwnership(String sessionId) {
+        validateSessionId(sessionId);
         String username = Objects.requireNonNull(UserContext.getUsername(), "用户未登录");
         LambdaQueryWrapper<AiSessionDO> qw = Wrappers.lambdaQuery(AiSessionDO.class)
                 .eq(AiSessionDO::getSessionId, sessionId)
@@ -143,6 +162,12 @@ public class AiSessionServiceImpl extends ServiceImpl<AiSessionMapper, AiSession
                 .eq(AiSessionDO::getDelFlag, 0);
         if (baseMapper.selectCount(qw) == 0) {
             throw new ClientException("会话不存在");
+        }
+    }
+
+    private void validateSessionId(String sessionId) {
+        if (sessionId == null || sessionId.isBlank() || sessionId.length() > 36) {
+            throw new ClientException("会话标识格式不正确");
         }
     }
 }

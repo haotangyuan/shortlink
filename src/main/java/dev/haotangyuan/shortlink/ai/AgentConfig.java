@@ -12,6 +12,8 @@ import java.time.LocalDate;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 
 /**
  * AI Agent 配置类
@@ -50,9 +52,17 @@ public class AgentConfig {
             """;
 
     @Bean
+    public Toolkit analyticsToolkit(StatsTools statsTools, InsightTools insightTools) {
+        Toolkit toolkit = new Toolkit();
+        toolkit.registerTool(statsTools);
+        toolkit.registerTool(insightTools);
+        return toolkit;
+    }
+
+    @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
     public ReActAgent analyticsAgent(
-            StatsTools statsTools,
-            InsightTools insightTools,
+            Toolkit analyticsToolkit,
             @Value("${short-link.ai.api-key}") String apiKey,
             @Value("${short-link.ai.model-name}") String modelName,
             @Value("${short-link.ai.base-url}") String baseUrl,
@@ -64,10 +74,6 @@ public class AgentConfig {
             return null;
         }
 
-        Toolkit toolkit = new Toolkit();
-        toolkit.registerTool(statsTools);
-        toolkit.registerTool(insightTools);
-
         String systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(LocalDate.now());
 
         ReActAgent agent = ReActAgent.builder()
@@ -78,11 +84,11 @@ public class AgentConfig {
                         .modelName(modelName)
                         .baseUrl(baseUrl)
                         .build())
-                .toolkit(toolkit)
+                .toolkit(analyticsToolkit)
                 .maxIters(maxIters)
                 .build();
 
-        log.info("AI Copilot Agent 初始化完成，模型: {}, 端点: {}, 最大迭代: {}", modelName, baseUrl, maxIters);
+        log.debug("AI Copilot Agent 初始化完成，模型: {}, 端点: {}, 最大迭代: {}", modelName, baseUrl, maxIters);
         return agent;
     }
 }

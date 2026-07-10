@@ -141,7 +141,7 @@ export const adminApi = {
 
   getAiSessions: () => request<AiSession[]>(`${admin}/ai/sessions`),
   getAiSessionMessages: (sessionId: string) =>
-    request<AiMessage[]>(`${admin}/ai/sessions/${sessionId}/messages`),
+    request<AiMessage[]>(`${admin}/ai/sessions/${encodeURIComponent(sessionId)}/messages`),
   deleteAiSession: (sessionId: string) =>
-    request<void>(`${admin}/ai/sessions/${sessionId}`, { method: "DELETE" }),
+    request<void>(`${admin}/ai/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" }),
 };

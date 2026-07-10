@@ -19,4 +19,14 @@ public class GroupLinkCountQueryVO {
      * 短链接数
      */
     private Integer linkCount;
+
+    /**
+     * 累计访问量
+     */
+    private Long totalPv;
+
+    /**
+     * 今日访问量
+     */
+    private Long todayPv;
 }

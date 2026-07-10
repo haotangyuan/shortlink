@@ -16,6 +16,16 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class GeoInfo {
 
+    public static GeoInfo unknown() {
+        return GeoInfo.builder()
+                .country("Unknown")
+                .province("Unknown")
+                .city("Unknown")
+                .adcode("Unknown")
+                .isp("Unknown")
+                .build();
+    }
+
     /**
      * 国家
      */

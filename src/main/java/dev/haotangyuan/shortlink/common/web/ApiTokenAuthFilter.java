@@ -66,8 +66,8 @@ public class ApiTokenAuthFilter implements Filter {
             String tokenHash = sha256Hex(token);
             String key = String.format(API_TOKEN_HASH_KEY, tokenHash);
             username = stringRedisTemplate.opsForValue().get(key);
-        } catch (Throwable t) {
-            log.error("Read api token mapping error", t);
+        } catch (Exception ex) {
+            log.error("Read api token mapping error", ex);
         }
         if (StrUtil.isBlank(username)) {
             unauthorized(resp);

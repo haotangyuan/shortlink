@@ -8,6 +8,7 @@ import dev.haotangyuan.shortlink.service.AiSessionService;
 import dev.haotangyuan.shortlink.vo.AiMessageVO;
 import dev.haotangyuan.shortlink.vo.AiSessionVO;
 import io.agentscope.core.ReActAgent;
+import io.agentscope.core.agent.RuntimeContext;
 import io.agentscope.core.message.Msg;
 import io.agentscope.core.message.MsgRole;
 import io.agentscope.core.message.UserMessage;
@@ -28,6 +29,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import reactor.core.Disposable;
 
 /**
  * AI Copilot 对话接口
@@ -54,6 +57,8 @@ public class AiChatController {
 
     /** 每次发送给 LLM 的最大历史消息数 */
     private static final int MAX_HISTORY_MESSAGES = 20;
+    private static final int MAX_MESSAGE_LENGTH = 4000;
+    private static final int MAX_SESSION_ID_LENGTH = 36;
 
     /**
      * SSE 流式对话端点
@@ -72,9 +77,15 @@ public class AiChatController {
         if (message == null || message.isBlank()) {
             throw new ClientException("消息不能为空");
         }
+        if (message.length() > MAX_MESSAGE_LENGTH) {
+            throw new ClientException("消息长度不能超过 " + MAX_MESSAGE_LENGTH + " 个字符");
+        }
         String sessionId = request.getSessionId() == null || request.getSessionId().isBlank()
-                ? "default"
+                ? UUID.randomUUID().toString()
                 : request.getSessionId();
+        if (sessionId.length() > MAX_SESSION_ID_LENGTH) {
+            throw new ClientException("会话标识格式不正确");
+        }
 
         SseEmitter emitter = new SseEmitter(120_000L); // 2 分钟超时
 
@@ -92,17 +103,8 @@ public class AiChatController {
             return emitter;
         }
 
-        // 在异步回调前捕获用户名（TransmittableThreadLocal 可能在回调线程中不可用）
-        String username;
-        try {
-            username = dev.haotangyuan.shortlink.common.biz.user.UserContext.getUsername();
-            if (username == null) {
-                emitter.send(SseEmitter.event().name("error")
-                        .data(objectMapper.writeValueAsString("用户未登录")));
-                emitter.complete();
-                return emitter;
-            }
-        } catch (Exception e) {
+        String username = dev.haotangyuan.shortlink.common.biz.user.UserContext.getUsername();
+        if (username == null) {
             try {
                 emitter.send(SseEmitter.event().name("error")
                         .data(objectMapper.writeValueAsString("用户未登录")));
@@ -136,9 +138,11 @@ public class AiChatController {
 
         // 6. 流式调用 Agent（带完整对话历史）
         StringBuilder assistantText = new StringBuilder();
-        final String capturedUsername = username;
-
-        analyticsAgent.streamEvents(conversation)
+        RuntimeContext runtimeContext = RuntimeContext.builder()
+                .userId(username)
+                .sessionId(sessionId)
+                .build();
+        Disposable subscription = analyticsAgent.streamEvents(conversation, runtimeContext)
                 .subscribe(
                         event -> {
                             try {
@@ -164,7 +168,7 @@ public class AiChatController {
                             try {
                                 emitter.send(SseEmitter.event()
                                         .name("error")
-                                        .data(objectMapper.writeValueAsString("AI 处理出错: " + error.getMessage())));
+                                        .data(objectMapper.writeValueAsString("AI 处理出错，请稍后重试")));
                             } catch (IOException ignored) {
                             }
                             emitter.completeWithError(error);
@@ -202,6 +206,12 @@ public class AiChatController {
                             log.info("AI Chat 完成: sessionId={}", finalSessionId);
                         }
                 );
+        emitter.onCompletion(subscription::dispose);
+        emitter.onError(ignored -> subscription.dispose());
+        emitter.onTimeout(() -> {
+            subscription.dispose();
+            emitter.complete();
+        });
 
         return emitter;
     }

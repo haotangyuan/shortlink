@@ -74,7 +74,8 @@ public interface LinkMapper extends BaseMapper<LinkDO> {
             <script>
             SELECT
                 gid AS gid,
-                COUNT(*) AS linkCount
+                COUNT(*) AS linkCount,
+                COALESCE(SUM(total_pv), 0) AS totalPv
             FROM t_link
             WHERE gid IN
             <foreach item="gid" collection="gidList" open="(" separator="," close=")">

@@ -14,11 +14,13 @@ import dev.haotangyuan.shortlink.vo.LinkPageVO;
 import dev.haotangyuan.shortlink.vo.LinkStatsVO;
 import io.agentscope.core.tool.Tool;
 import io.agentscope.core.tool.ToolParam;
+import io.agentscope.core.agent.RuntimeContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -53,9 +55,10 @@ public class StatsTools {
             @ToolParam(name = "startDate",
                        description = "统计开始日期，格式 yyyy-MM-dd") String startDate,
             @ToolParam(name = "endDate",
-                       description = "统计结束日期，格式 yyyy-MM-dd") String endDate) {
+                       description = "统计结束日期，格式 yyyy-MM-dd") String endDate,
+            RuntimeContext runtimeContext) {
 
-        try {
+        return runAsUser(runtimeContext, "get_link_stats", "查询失败", () -> {
             LinkStatsReqDTO reqDTO = new LinkStatsReqDTO();
             reqDTO.setFullShortUrl(fullShortUrl);
             reqDTO.setGid(gid);
@@ -83,10 +86,7 @@ public class StatsTools {
             result.put("topIpStats", stats.getTopIpStats());
 
             return JSON.toJSONString(result);
-        } catch (Exception e) {
-            log.error("AI tool get_link_stats error", e);
-            return "{\"error\": \"查询失败: " + e.getMessage() + "\"}";
-        }
+        });
     }
 
     /**
@@ -102,9 +102,10 @@ public class StatsTools {
             @ToolParam(name = "startDate",
                        description = "统计开始日期，格式 yyyy-MM-dd") String startDate,
             @ToolParam(name = "endDate",
-                       description = "统计结束日期，格式 yyyy-MM-dd") String endDate) {
+                       description = "统计结束日期，格式 yyyy-MM-dd") String endDate,
+            RuntimeContext runtimeContext) {
 
-        try {
+        return runAsUser(runtimeContext, "get_group_stats", "查询失败", () -> {
             GroupStatsReqDTO reqDTO = new GroupStatsReqDTO();
             reqDTO.setGid(gid);
             reqDTO.setStartDate(startDate);
@@ -129,10 +130,7 @@ public class StatsTools {
             result.put("uvTypeStats", stats.getUvTypeStats());
 
             return JSON.toJSONString(result);
-        } catch (Exception e) {
-            log.error("AI tool get_group_stats error", e);
-            return "{\"error\": \"查询失败: " + e.getMessage() + "\"}";
-        }
+        });
     }
 
     /**
@@ -148,9 +146,10 @@ public class StatsTools {
             @ToolParam(name = "startDate",
                        description = "统计开始日期，格式 yyyy-MM-dd") String startDate,
             @ToolParam(name = "endDate",
-                       description = "统计结束日期，格式 yyyy-MM-dd") String endDate) {
+                       description = "统计结束日期，格式 yyyy-MM-dd") String endDate,
+            RuntimeContext runtimeContext) {
 
-        try {
+        return runAsUser(runtimeContext, "compare_links", "查询失败", () -> {
             LinkPageReqDTO pageReq = new LinkPageReqDTO();
             pageReq.setGid(gid);
             pageReq.setCurrent(1);
@@ -193,10 +192,7 @@ public class StatsTools {
             result.put("links", comparison);
 
             return JSON.toJSONString(result);
-        } catch (Exception e) {
-            log.error("AI tool compare_links error", e);
-            return "{\"error\": \"查询失败: " + e.getMessage() + "\"}";
-        }
+        });
     }
 
     /**
@@ -205,8 +201,8 @@ public class StatsTools {
     @Tool(name = "list_groups",
           description = "列出当前用户的所有短链接分组，返回分组标识（gid）和分组名称。"
                       + "当用户没有指定具体分组、或需要查看有哪些分组时使用此工具。")
-    public String listGroups() {
-        try {
+    public String listGroups(RuntimeContext runtimeContext) {
+        return runAsUser(runtimeContext, "list_groups", "查询失败", () -> {
             List<GroupVO> groups = groupService.listGroup();
             List<Map<String, Object>> result = groups.stream()
                     .map(g -> {
@@ -217,9 +213,35 @@ public class StatsTools {
                     })
                     .collect(Collectors.toList());
             return JSON.toJSONString(result);
-        } catch (Exception e) {
-            log.error("AI tool list_groups error", e);
-            return "{\"error\": \"查询失败: " + e.getMessage() + "\"}";
+        });
+    }
+
+    private String runAsUser(
+            RuntimeContext runtimeContext,
+            String operation,
+            String failureMessage,
+            Supplier<String> action) {
+        String username = runtimeContext == null ? null : runtimeContext.getUserId();
+        if (username == null || username.isBlank()) {
+            return errorResponse("用户未登录");
         }
+        String previousUsername = UserContext.getUsername();
+        UserContext.setUsername(username);
+        try {
+            return action.get();
+        } catch (Exception ex) {
+            log.error("AI tool {} error", operation, ex);
+            return errorResponse(failureMessage);
+        } finally {
+            if (previousUsername == null) {
+                UserContext.removeUser();
+            } else {
+                UserContext.setUsername(previousUsername);
+            }
+        }
+    }
+
+    private String errorResponse(String message) {
+        return JSON.toJSONString(Map.of("error", message));
     }
 }

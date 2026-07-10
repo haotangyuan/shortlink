@@ -1,6 +1,8 @@
 package dev.haotangyuan.shortlink.service.impl;
 
+import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
 import dev.haotangyuan.shortlink.service.UrlTitleService;
+import dev.haotangyuan.shortlink.toolkit.LinkUtil;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -23,13 +25,22 @@ public class UrlTitleServiceImpl implements UrlTitleService {
     @Override
     public String getTitleByUrl(String url) {
         if (url == null || url.isBlank()) {
-            return "";
+            throw new ClientException("链接不能为空");
         }
+        if (!LinkUtil.isSafePublicHttpUrl(url)) {
+            throw new ClientException("仅支持公网 HTTP/HTTPS 链接");
+        }
+        HttpURLConnection conn = null;
         try {
-            HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+            conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setConnectTimeout(4000);
             conn.setReadTimeout(4000);
+            conn.setInstanceFollowRedirects(false);
             conn.setRequestProperty("User-Agent", "Mozilla/5.0");
+            int responseCode = conn.getResponseCode();
+            if (responseCode < 200 || responseCode >= 300) {
+                return "";
+            }
             try (BufferedReader br = new BufferedReader(
                     new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
                 StringBuilder sb = new StringBuilder();
@@ -44,6 +55,10 @@ public class UrlTitleServiceImpl implements UrlTitleService {
                 }
             }
         } catch (Exception ignored) {
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
         return "";
     }
