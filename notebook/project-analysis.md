@@ -66,9 +66,9 @@ shortlink/
 │   │   ├── features/                     # 8 个业务模块
 │   │   └── store/                        # Auth Context
 │   └── dist/                             # 生产构建产物
-├── docs/                                 # 项目文档
+├── docs/                                 # Superpowers 设计、计划和验证记录
+├── notebook/                             # 项目文档与开发记录
 ├── scripts/                              # 构建脚本
-├── openspec/                             # API 规范
 ├── link.sql                              # 完整数据库 DDL（~60KB）
 ├── docker-compose.yml                    # 三容器编排
 ├── Dockerfile                            # 多阶段构建

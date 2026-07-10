@@ -174,7 +174,7 @@ frontend/src
 ├── app/                 # Provider 和 Router
 ├── components/          # 布局和通用 UI
 ├── features/            # 业务页面：登录、链接、分组、统计、Token 等
-├── lib/                 # 日期、className 工具
+├── frontend/src/lib/    # 日期、className 工具
 └── store/               # Auth Context
 ```
 

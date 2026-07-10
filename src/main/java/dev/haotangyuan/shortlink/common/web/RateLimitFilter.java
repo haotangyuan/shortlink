@@ -63,33 +63,29 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 tooMany(req, resp);
                 return;
             }
-        } else if ("/api/short-link/v1/create".equals(path)) {
-            if (!createRateLimiter.tryAcquire(1, props.getCreate().getTimeout(), TimeUnit.MILLISECONDS)) {
-                tooMany(req, resp);
-                return;
-            }
-        } else if ("/api/short-link/admin/v1/create".equals(path)) {
-            if (!createRateLimiter.tryAcquire(1, props.getCreate().getTimeout(), TimeUnit.MILLISECONDS)) {
-                tooMany(req, resp);
-                return;
-            }
-        } else if ("/api/short-link/v1/create/batch".equals(path)) {
-            if (!createRateLimiter.tryAcquire(5, props.getCreate().getTimeout(), TimeUnit.MILLISECONDS)) {
-                tooMany(req, resp);
-                return;
-            }
-        } else if ("/api/short-link/admin/v1/create/batch".equals(path)) {
-            if (!createRateLimiter.tryAcquire(5, props.getCreate().getTimeout(), TimeUnit.MILLISECONDS)) {
-                tooMany(req, resp);
-                return;
-            }
-        } else if (path.startsWith("/api/short-link/admin/v1/stats")) {
-            if (!statsRateLimiter.tryAcquire(1, props.getStats().getTimeout(), TimeUnit.MILLISECONDS)) {
-                tooMany(req, resp);
-                return;
+        } else {
+            int permitCount = creationPermitCount(path);
+            if (permitCount > 0) {
+                if (!createRateLimiter.tryAcquire(permitCount, props.getCreate().getTimeout(), TimeUnit.MILLISECONDS)) {
+                    tooMany(req, resp);
+                    return;
+                }
+            } else if (path.startsWith("/api/short-link/admin/v1/stats")) {
+                if (!statsRateLimiter.tryAcquire(1, props.getStats().getTimeout(), TimeUnit.MILLISECONDS)) {
+                    tooMany(req, resp);
+                    return;
+                }
             }
         }
         filterChain.doFilter(req, resp);
+    }
+
+    private int creationPermitCount(String path) {
+        return switch (path) {
+            case "/api/short-link/v1/create", "/api/short-link/admin/v1/create" -> 1;
+            case "/api/short-link/v1/create/batch", "/api/short-link/admin/v1/create/batch" -> 5;
+            default -> 0;
+        };
     }
 
     private boolean isRedirectPath(HttpServletRequest req) {

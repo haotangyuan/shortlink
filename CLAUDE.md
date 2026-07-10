@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**开始任何开发工作前，必须先阅读 [doc/rules/开发者准则.md](doc/rules/开发者准则.md)。**
+**开始任何开发工作前，必须先阅读 [notebook/rules/开发者准则.md](notebook/rules/开发者准则.md)。**
 
 ## Build & Run
 
