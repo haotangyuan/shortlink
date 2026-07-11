@@ -56,6 +56,7 @@ src/main/resources/static/app/
 .serena
 benchmark/results/*/samples.jtl
 benchmark/results/*/dashboard/
+benchmark/results/*/resources.csv
 !benchmark/results/.gitkeep
 .claude/
 .codex/

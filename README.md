@@ -126,18 +126,18 @@ Redis INCRBY → 批量取号段 → 仿射变换 y=(ai+b)mod62^6 → Base62 →
 
 ## 性能压测
 
-仓库提供参数化 JMeter 5.5 计划，分别测试短链创建与热点短链跳转。压测结果只在相同代码版本、机器配置、JVM 参数和数据状态下可比较；不要把并发线程数写成 QPS。
+仓库提供参数化 JMeter 5.6.3 计划，分别测试短链创建与热点短链跳转。压测结果只在相同代码版本、机器配置、JVM 参数和数据状态下可比较；不要把并发线程数写成 QPS。
 
 ### 执行方法
 
 先启动完整服务并创建一条长期有效的短链，再从项目根目录执行：
 
 ```bash
-# 热点跳转：200 并发，预热爬升 30 秒，持续 120 秒
-SHORT_URI=abc123 THREADS=200 DURATION_SECONDS=120 ./scripts/run-benchmark.sh redirect
+# 热点跳转：100 个工作线程，以固定 900 req/s 持续 40 秒
+SHORT_URI=abc123 THREADS=100 TARGET_RPS=900 DURATION_SECONDS=40 ./scripts/run-benchmark.sh redirect
 
-# 创建短链：100 并发；登录压测时可额外传入 AUTH_HEADER 和 GID
-THREADS=100 DURATION_SECONDS=120 ./scripts/run-benchmark.sh create
+# 创建短链：固定 400 req/s；登录压测时可额外传入 AUTH_HEADER 和 GID
+THREADS=100 TARGET_RPS=400 DURATION_SECONDS=40 ./scripts/run-benchmark.sh create
 ```
 
 脚本优先使用本机 JMeter，没有安装时使用 Docker 镜像。每次结果保存到 `benchmark/results/<时间>-<场景>/`：`samples.jtl` 是原始样本，`dashboard/index.html` 是 JMeter HTML 报告。原始样本和 HTML 报告默认不提交 Git；发布 README 数据时应将它们归档到 Release/CI Artifact，并至少记录以下信息：
@@ -152,22 +152,22 @@ THREADS=100 DURATION_SECONDS=120 ./scripts/run-benchmark.sh create
 
 ### 已发布结果
 
-测试时间：2026-07-11。测试对象为当前工作区构建的单应用实例，基线提交为 `1cc52a6`，包含本次统计查询模块重构（工作区 `dirty`）。两个场景均爬升 30 秒、持续 60 秒，压测机与应用/MySQL/Redis 同机运行。
+测试时间：2026-07-11。测试对象为当前工作区构建的单应用实例，基线提交为 `1dde4f1`，包含统计查询模块重构；压测工具与 README 更新尚未提交，因此工作区为 `dirty`。使用 ARM 原生 JMeter、100 个工作线程和固定请求率阶梯加压；每个线程保留自己的 UV Cookie。应用/MySQL/Redis 运行在 Docker，压测端运行在 macOS 宿主机。
 
-| 场景 | 并发 | 样本数 | 吞吐量 | 平均延迟 | P95 | P99 | 错误率 |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 创建短链 | 600 | 3,530 | 49.8 req/s | 5,087 ms | 11,335 ms | 14,686 ms | 0% |
-| 热点跳转 | 1,000 | 2,208 | 22.7 req/s | 16,181 ms | 33,507 ms | 33,544 ms | 0% |
+| 场景 | 目标速率 | 实际吞吐 | 平均延迟 | P95 | P99 | 错误率 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 创建短链（稳定档） | 500 req/s | 501.3 req/s | 4.70 ms | 10 ms | 25 ms | 0% |
+| 创建短链（超过限流） | 550 req/s | 550.4 req/s | 12.01 ms | 22 ms | 25 ms | 6.31% |
+| 热点跳转（稳定档） | 1,000 req/s | 998.1 req/s | 1.88 ms | 5 ms | 30 ms | 0% |
+| 热点跳转（超过限流） | 1,100 req/s | 1,098.0 req/s | 3.19 ms | 6 ms | 9 ms | 6.76% |
 
-![压测核心指标](benchmark/results/2026-07-11-local-docker/benchmark-summary.png)
+![固定请求率阶梯压测](benchmark/results/2026-07-11-native-rate/rate-staircase.png)
 
-![压测时序变化](benchmark/results/2026-07-11-local-docker/benchmark-timeline.png)
+![阶梯压测资源观测](benchmark/results/2026-07-11-native-rate/rate-resources.png)
 
-![容器资源观测](benchmark/results/2026-07-11-local-docker/benchmark-resources.png)
+测试环境：Apple M3 Pro（12 核）、18 GB 内存、macOS 26.5.1、Docker Desktop 29.5.2；应用容器使用 Java 21、`-Xms512m -Xmx1024m`，MySQL 8.0、Redis 7.0；压测端为宿主机 ARM 原生 JMeter 5.6.3。完整阶梯数据见 [summary.json](benchmark/results/2026-07-11-native-rate/summary.json)。
 
-测试环境：Apple M3 Pro（12 核）、18 GB 内存、macOS 26.5.1、Docker Desktop 29.5.2；应用容器使用 Java 21、`-Xms512m -Xmx1024m`，MySQL 8.0、Redis 7.0。JMeter 5.5 通过 `linux/amd64` 镜像运行在 ARM 主机上。完整机器可读指标见 [summary.json](benchmark/results/2026-07-11-local-docker/summary.json)。
-
-> 结果解读：这是开发机上的同机混部压力测试，不代表独立压测机或生产集群容量。高并发下两个场景均出现明显排队，尤其是 1,000 并发跳转；结果适合作为后续优化的本地基线，不应直接宣传为系统吞吐上限。创建场景还包含数据库写入与站点 favicon 获取成本。
+> 结果解读：在当前单机环境和配置的限流边界内，创建链路稳定达到 500 req/s，热点跳转稳定达到 1,000 req/s，且错误率为 0；超过配置上限后约 6% 请求被限流拒绝，符合预期。该结果用于同环境版本对比，不代表独立压测机或生产集群的容量上限。
 
 ## 技术亮点
 

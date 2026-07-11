@@ -6,9 +6,12 @@ SHORT_URI="${SHORT_URI:-}"
 THREADS="${THREADS:-200}"
 DURATION_SECONDS="${DURATION_SECONDS:-120}"
 RAMP_SECONDS="${RAMP_SECONDS:-30}"
+TARGET_RPS="${TARGET_RPS:-0}"
+TARGET_RPM=1000000000000
+[[ "${TARGET_RPS}" -gt 0 ]] && TARGET_RPM=$((TARGET_RPS * 60))
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8068}"
-RUN_ID="$(date +%Y%m%d-%H%M%S)-${MODE}"
+RUN_ID="${RUN_ID:-$(date +%Y%m%d-%H%M%S)-${MODE}}"
 RESULT_DIR="benchmark/results/${RUN_ID}"
 
 if [[ "${MODE}" != "create" && "${MODE}" != "redirect" ]]; then
@@ -38,6 +41,7 @@ JMETER_ARGS=(
   -Jhost.header="${HOST}:${PORT}"
   -Jcreate.threads="${CREATE_THREADS}" -Jredirect.threads="${REDIRECT_THREADS}"
   -Jduration.seconds="${DURATION_SECONDS}" -Jramp.seconds="${RAMP_SECONDS}"
+  -Jtarget.rpm="${TARGET_RPM}"
   -Jshort.uri="${SHORT_URI}"
   -Jgid="${GID:-public}" -Jauth.header="${AUTH_HEADER:-}"
 )
