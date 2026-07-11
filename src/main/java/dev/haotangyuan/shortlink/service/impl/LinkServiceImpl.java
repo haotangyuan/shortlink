@@ -21,7 +21,6 @@ import dev.haotangyuan.shortlink.common.config.GotoDomainWhiteListConfiguration;
 import dev.haotangyuan.shortlink.common.convention.exception.ClientException;
 import dev.haotangyuan.shortlink.common.convention.exception.ServiceException;
 import dev.haotangyuan.shortlink.common.enums.ValidDateTypeEnum;
-import dev.haotangyuan.shortlink.dao.entity.LinkAccessStatsDO;
 import dev.haotangyuan.shortlink.dao.entity.LinkDO;
 import dev.haotangyuan.shortlink.dao.entity.LinkGotoDO;
 import dev.haotangyuan.shortlink.dao.mapper.LinkAccessStatsMapper;
@@ -38,7 +37,6 @@ import dev.haotangyuan.shortlink.mq.producer.LinkStatsSaveProducer;
 import dev.haotangyuan.shortlink.service.LinkService;
 import dev.haotangyuan.shortlink.toolkit.LinkUtil;
 import dev.haotangyuan.shortlink.toolkit.ShortCodeUtil;
-import jakarta.annotation.PostConstruct;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import java.io.IOException;
@@ -56,11 +54,8 @@ import org.redisson.api.RedissonClient;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.script.DefaultRedisScript;
-import org.springframework.scripting.support.ResourceScriptSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -93,6 +88,7 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     private final StringRedisTemplate stringRedisTemplate;
     private final RedissonClient redissonClient;
     private final LinkAccessStatsMapper linkAccessStatsMapper;
+    private final LinkTodayStatsQuery linkTodayStatsQuery;
     private final GotoDomainWhiteListConfiguration gotoDomainWhiteListConfiguration;
     private final LinkStatsSaveProducer linkStatsSaveProducer;
     private final LinkStatsSaver linkStatsSaver;
@@ -104,19 +100,10 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
     private final Cache<String, String> redirectCache;
     private final TransactionTemplate transactionTemplate;
 
-    private DefaultRedisScript<List> hllBatchScript;
-    private static final String HLL_PFCOUNT_BATCH_LUA = "lua/hll_pfcount_batch.lua";
     private static final int MAX_BATCH_CREATE_SIZE = 100;
 
     @Value("${short-link.domain.default}")
     private String createLinkDefaultDomain;
-
-    @PostConstruct
-    public void init() {
-        hllBatchScript = new DefaultRedisScript<>();
-        hllBatchScript.setScriptSource(new ResourceScriptSource(new ClassPathResource(HLL_PFCOUNT_BATCH_LUA)));
-        hllBatchScript.setResultType(List.class);
-    }
 
     @Transactional(rollbackFor = Exception.class)
     @Override
@@ -303,24 +290,20 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
         Page<LinkDO> page = new Page<>(linkPageReqDTO.getCurrent(), linkPageReqDTO.getSize());
         IPage<LinkDO> resultPage = baseMapper.pageLink(page, linkPageReqDTO);
 
-        // 获取所有短链接列表以批量计算今日 UV/UIP
         List<String> fullShortUrls = resultPage.getRecords().stream()
                 .map(LinkDO::getFullShortUrl)
                 .toList();
-
-        // 使用批量 Lua 脚本获取今日 UV/UIP
-        Map<String, int[]> todayStatsMap = batchGetTodayStats(fullShortUrls);
+        Map<String, LinkTodayStatsQuery.TodayStats> todayStatsMap = linkTodayStatsQuery.findByShortUrls(fullShortUrls);
 
         return resultPage.convert(each -> {
             LinkPageVO bean = BeanUtil.toBean(each, LinkPageVO.class);
             bean.setDomain("http://" + bean.getDomain());
 
-            // 设置今日统计
-            int[] todayStats = todayStatsMap.get(each.getFullShortUrl());
+            LinkTodayStatsQuery.TodayStats todayStats = todayStatsMap.get(each.getFullShortUrl());
             if (todayStats != null) {
-                bean.setTodayPv(todayStats[0]);
-                bean.setTodayUv(todayStats[1]);
-                bean.setTodayUip(todayStats[2]);
+                bean.setTodayPv(todayStats.pv());
+                bean.setTodayUv(todayStats.uv());
+                bean.setTodayUip(todayStats.uip());
             } else {
                 bean.setTodayPv(0);
                 bean.setTodayUv(0);
@@ -329,73 +312,6 @@ public class LinkServiceImpl extends ServiceImpl<LinkMapper, LinkDO> implements 
 
             return bean;
         });
-    }
-
-    /**
-     * 批量获取今日统计数据
-     */
-    private Map<String, int[]> batchGetTodayStats(List<String> fullShortUrls) {
-        Map<String, int[]> resultMap = new HashMap<>();
-
-        if (fullShortUrls == null || fullShortUrls.isEmpty()) {
-            return resultMap;
-        }
-
-        Map<String, Integer> todayPvMap = batchGetTodayPv(fullShortUrls);
-
-        // 计算 v = epochDay(Asia/Shanghai) % 2
-        int v = (int) (LocalDate.now(ZoneId.of("Asia/Shanghai")).toEpochDay() % 2);
-
-        String uvPrefix = String.format(STATS_UV_PREFIX, v);
-        String uipPrefix = String.format(STATS_UIP_PREFIX, v);
-        String fsuList = String.join(",", fullShortUrls);
-        List<Object> uvResults = Collections.emptyList();
-        List<Object> uipResults = Collections.emptyList();
-
-        try {
-            // 批量获取 UV 数据
-            uvResults = stringRedisTemplate.execute(hllBatchScript,
-                    Arrays.asList(uvPrefix), fsuList);
-
-            // 批量获取 UIP 数据
-            uipResults = stringRedisTemplate.execute(hllBatchScript,
-                    Arrays.asList(uipPrefix), fsuList);
-        } catch (Exception e) {
-            log.warn("Failed to batch get today's UV/UIP, returning zero values", e);
-        }
-
-        for (int i = 0; i < fullShortUrls.size(); i++) {
-            String fullShortUrl = fullShortUrls.get(i);
-            int todayUv = valueAt(uvResults, i);
-            int todayUip = valueAt(uipResults, i);
-            int todayPv = todayPvMap.getOrDefault(fullShortUrl, 0);
-            resultMap.put(fullShortUrl, new int[]{todayPv, todayUv, todayUip});
-        }
-
-        return resultMap;
-    }
-
-    private Map<String, Integer> batchGetTodayPv(List<String> fullShortUrls) {
-        try {
-            ZoneId shanghaiZone = ZoneId.of("Asia/Shanghai");
-            LocalDate today = LocalDate.now(shanghaiZone);
-            Date todayDate = Date.from(today.atStartOfDay(shanghaiZone).toInstant());
-            return linkAccessStatsMapper.listTodayPvByShortUrls(fullShortUrls, todayDate).stream()
-                    .collect(java.util.stream.Collectors.toMap(
-                            LinkAccessStatsDO::getFullShortUrl,
-                            each -> Optional.ofNullable(each.getPv()).orElse(0),
-                            Integer::sum
-                    ));
-        } catch (Exception e) {
-            log.warn("Failed to batch get today's PV, returning zero values", e);
-            return Collections.emptyMap();
-        }
-    }
-
-    private int valueAt(List<Object> values, int index) {
-        if (values == null || index >= values.size()) return 0;
-        Object value = values.get(index);
-        return value instanceof Number number ? number.intValue() : 0;
     }
 
     @Override

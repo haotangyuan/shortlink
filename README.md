@@ -124,6 +124,51 @@ Redis INCRBY → 批量取号段 → 仿射变换 y=(ai+b)mod62^6 → Base62 →
 
 > 详细架构说明见 [notebook/intro/核心架构.md](notebook/intro/核心架构.md)
 
+## 性能压测
+
+仓库提供参数化 JMeter 5.5 计划，分别测试短链创建与热点短链跳转。压测结果只在相同代码版本、机器配置、JVM 参数和数据状态下可比较；不要把并发线程数写成 QPS。
+
+### 执行方法
+
+先启动完整服务并创建一条长期有效的短链，再从项目根目录执行：
+
+```bash
+# 热点跳转：200 并发，预热爬升 30 秒，持续 120 秒
+SHORT_URI=abc123 THREADS=200 DURATION_SECONDS=120 ./scripts/run-benchmark.sh redirect
+
+# 创建短链：100 并发；登录压测时可额外传入 AUTH_HEADER 和 GID
+THREADS=100 DURATION_SECONDS=120 ./scripts/run-benchmark.sh create
+```
+
+脚本优先使用本机 JMeter，没有安装时使用 Docker 镜像。每次结果保存到 `benchmark/results/<时间>-<场景>/`：`samples.jtl` 是原始样本，`dashboard/index.html` 是 JMeter HTML 报告。原始样本和 HTML 报告默认不提交 Git；发布 README 数据时应将它们归档到 Release/CI Artifact，并至少记录以下信息：
+
+| 项目 | 必填内容 |
+| --- | --- |
+| 代码版本 | Git commit SHA；工作区有改动时标记 `dirty` |
+| 环境 | CPU、内存、操作系统、JDK/JVM 参数、JMeter 版本 |
+| 拓扑 | 压测机与服务是否同机，应用/MySQL/Redis 实例数 |
+| 场景 | 接口、并发线程、爬升时间、稳定运行时间、数据预热方式 |
+| 结果 | 吞吐量、平均延迟、P90/P95/P99、错误率、CPU/内存峰值 |
+
+### 已发布结果
+
+测试时间：2026-07-11。测试对象为当前工作区构建的单应用实例，基线提交为 `1cc52a6`，包含本次统计查询模块重构（工作区 `dirty`）。两个场景均爬升 30 秒、持续 60 秒，压测机与应用/MySQL/Redis 同机运行。
+
+| 场景 | 并发 | 样本数 | 吞吐量 | 平均延迟 | P95 | P99 | 错误率 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 创建短链 | 600 | 3,530 | 49.8 req/s | 5,087 ms | 11,335 ms | 14,686 ms | 0% |
+| 热点跳转 | 1,000 | 2,208 | 22.7 req/s | 16,181 ms | 33,507 ms | 33,544 ms | 0% |
+
+![压测核心指标](benchmark/results/2026-07-11-local-docker/benchmark-summary.png)
+
+![压测时序变化](benchmark/results/2026-07-11-local-docker/benchmark-timeline.png)
+
+![容器资源观测](benchmark/results/2026-07-11-local-docker/benchmark-resources.png)
+
+测试环境：Apple M3 Pro（12 核）、18 GB 内存、macOS 26.5.1、Docker Desktop 29.5.2；应用容器使用 Java 21、`-Xms512m -Xmx1024m`，MySQL 8.0、Redis 7.0。JMeter 5.5 通过 `linux/amd64` 镜像运行在 ARM 主机上。完整机器可读指标见 [summary.json](benchmark/results/2026-07-11-local-docker/summary.json)。
+
+> 结果解读：这是开发机上的同机混部压力测试，不代表独立压测机或生产集群容量。高并发下两个场景均出现明显排队，尤其是 1,000 并发跳转；结果适合作为后续优化的本地基线，不应直接宣传为系统吞吐上限。创建场景还包含数据库写入与站点 favicon 获取成本。
+
 ## 技术亮点
 
 - 短码生成：号段 + 仿射置换 + Base62

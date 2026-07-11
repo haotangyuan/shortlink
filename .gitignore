@@ -54,7 +54,9 @@ src/main/resources/static/app/
 *.temp
 
 .serena
-benchmark/
+benchmark/results/*/samples.jtl
+benchmark/results/*/dashboard/
+!benchmark/results/.gitkeep
 .claude/
 .codex/
 .codegraph/
