@@ -19,6 +19,7 @@ OUTPUT = RESULT_ROOT / "2026-07-11-native-rate"
 BLUE = "#2563EB"
 ORANGE = "#F59E0B"
 SLATE = "#64748B"
+SCENARIO_LABELS = {"create": "创建短链", "redirect": "热点跳转"}
 
 
 def load_resources(path: Path) -> pd.DataFrame:
@@ -80,27 +81,30 @@ def save_performance_chart(frames: dict[str, pd.DataFrame]) -> None:
     for row, scenario in enumerate(("create", "redirect")):
         frame = frames[scenario]
         limit = 500 if scenario == "create" else 1000
-        axes[row, 0].plot(frame.targetRps, frame.targetRps, color=SLATE, linestyle="--", label="target")
-        axes[row, 0].plot(frame.targetRps, frame.actualRps, color=BLUE, marker="o", linewidth=2, label="actual")
-        axes[row, 0].set_title(f"{scenario.title()} · throughput")
-        axes[row, 0].set_ylabel("requests / second")
+        label = SCENARIO_LABELS[scenario]
+        axes[row, 0].plot(frame.targetRps, frame.targetRps, color=SLATE, linestyle="--", label="目标速率")
+        axes[row, 0].plot(frame.targetRps, frame.actualRps, color=BLUE, marker="o", linewidth=2, label="实际吞吐")
+        axes[row, 0].set_title(f"{label} · 目标速率与实际吞吐")
+        axes[row, 0].set_ylabel("每秒请求数（req/s）")
         axes[row, 0].legend(frameon=False)
 
         axes[row, 1].plot(frame.targetRps, frame.p95Ms, color=BLUE, marker="o", linewidth=2, label="P95")
         axes[row, 1].plot(frame.targetRps, frame.p99Ms, color=ORANGE, marker="s", linewidth=2, label="P99")
-        axes[row, 1].set_title(f"{scenario.title()} · tail latency")
-        axes[row, 1].set_ylabel("milliseconds")
+        axes[row, 1].set_title(f"{label} · 尾延迟")
+        axes[row, 1].set_ylabel("响应时间（毫秒）")
         axes[row, 1].legend(frameon=False)
 
         axes[row, 2].plot(frame.targetRps, frame.errorPct, color=ORANGE, marker="o", linewidth=2)
         axes[row, 2].axvline(limit, color=SLATE, linestyle="--", linewidth=1.5)
-        axes[row, 2].set_title(f"{scenario.title()} · assertion errors")
-        axes[row, 2].set_ylabel("percent")
+        axes[row, 2].annotate("配置的限流上限", xy=(limit, 0), xytext=(limit * 0.62, 3.6),
+                              arrowprops={"arrowstyle": "->", "color": SLATE}, color=SLATE)
+        axes[row, 2].set_title(f"{label} · 请求错误率")
+        axes[row, 2].set_ylabel("错误请求占比（%）")
         for axis in axes[row]:
-            axis.set_xlabel("target requests / second")
+            axis.set_xlabel("目标请求速率（req/s）")
             axis.grid(alpha=0.8)
-    fig.suptitle("ShortLink · controlled request-rate staircase", fontsize=16, fontweight="bold", x=0.04, ha="left")
-    fig.text(0.04, 0.94, "Native ARM JMeter 5.6.3 · 100 workers · 10s ramp-up · per-user cookies", color=SLATE)
+    fig.suptitle("ShortLink 固定请求率阶梯压测", fontsize=16, fontweight="bold", x=0.04, ha="left")
+    fig.text(0.04, 0.94, "ARM 原生 JMeter 5.6.3 · 100 个工作线程 · 10 秒爬升 · 每线程保持独立 Cookie", color=SLATE)
     fig.tight_layout(rect=(0, 0, 1, 0.92))
     fig.savefig(OUTPUT / "rate-staircase.png", dpi=180, bbox_inches="tight")
     plt.close(fig)
@@ -110,19 +114,20 @@ def save_resource_chart(frames: dict[str, pd.DataFrame]) -> None:
     fig, axes = plt.subplots(2, 2, figsize=(12, 8.2))
     for row, scenario in enumerate(("create", "redirect")):
         frame = frames[scenario]
-        axes[row, 0].plot(frame.targetRps, frame.appCpuPeakPct, color=BLUE, marker="o", label="app")
-        axes[row, 0].plot(frame.targetRps, frame.mysqlCpuPeakPct, color=ORANGE, marker="s", label="mysql")
-        axes[row, 0].plot(frame.targetRps, frame.redisCpuPeakPct, color=SLATE, marker="^", label="redis")
-        axes[row, 0].set_title(f"{scenario.title()} · observed peak CPU")
-        axes[row, 0].set_ylabel("% of one CPU core")
+        label = SCENARIO_LABELS[scenario]
+        axes[row, 0].plot(frame.targetRps, frame.appCpuPeakPct, color=BLUE, marker="o", label="应用")
+        axes[row, 0].plot(frame.targetRps, frame.mysqlCpuPeakPct, color=ORANGE, marker="s", label="MySQL")
+        axes[row, 0].plot(frame.targetRps, frame.redisCpuPeakPct, color=SLATE, marker="^", label="Redis")
+        axes[row, 0].set_title(f"{label} · 容器 CPU 峰值")
+        axes[row, 0].set_ylabel("单核 CPU 占用（100%=占满1核）")
         axes[row, 0].legend(frameon=False)
         axes[row, 1].plot(frame.targetRps, frame.appMemoryPeakMiB, color=BLUE, marker="o")
-        axes[row, 1].set_title(f"{scenario.title()} · application peak memory")
-        axes[row, 1].set_ylabel("MiB")
+        axes[row, 1].set_title(f"{label} · 应用容器内存峰值")
+        axes[row, 1].set_ylabel("内存（MiB）")
         for axis in axes[row]:
-            axis.set_xlabel("target requests / second")
+            axis.set_xlabel("目标请求速率（req/s）")
             axis.grid(alpha=0.8)
-    fig.suptitle("Container resource observations", fontsize=16, fontweight="bold", x=0.06, ha="left")
+    fig.suptitle("容器资源使用情况", fontsize=16, fontweight="bold", x=0.06, ha="left")
     fig.tight_layout(rect=(0, 0, 1, 0.92))
     fig.savefig(OUTPUT / "rate-resources.png", dpi=180, bbox_inches="tight")
     plt.close(fig)
